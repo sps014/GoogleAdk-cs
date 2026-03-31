@@ -22,6 +22,7 @@ using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
+using GoogleAdk.Dev;
 using GoogleAdk.Models.Gemini;
 
 var model = GeminiModelFactory.Create("gemini-2.5-flash");
@@ -63,6 +64,14 @@ var refinementLoop = new LoopAgent(new LoopAgentConfig
     MaxIterations = 5,
     SubAgents = new List<BaseAgent> { drafter, critic },
 });
+
+
+if(args.Contains("--web"))
+{
+    AdkWeb.Root = refinementLoop;
+    await AdkWeb.RunAsync();
+    return;
+}
 
 var runner = new InMemoryRunner("loop-agent-sample", refinementLoop);
 
