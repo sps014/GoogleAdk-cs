@@ -1,11 +1,8 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: Apache-2.0
 
-using GoogleAdk.Core;
-using GoogleAdk.Core.Abstractions.Events;
-using GoogleAdk.Core.Abstractions.Models;
+using System.Text.RegularExpressions;
 using GoogleAdk.Core.Abstractions.Tools;
-using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Tools;
 
 namespace GoogleAdk.Samples.Combined;
@@ -16,52 +13,41 @@ namespace GoogleAdk.Samples.Combined;
 public static partial class CombinedTools
 {
     /// <summary>
-    /// Escalate tool — breaks the review loop when quality is satisfactory.
+    /// Counts word frequency in the given text and returns the top N words as a markdown table.
     /// </summary>
-    public static readonly FunctionTool EscalateTool = new(
-        name: "escalate",
-        description: "Call this tool when the quality score is >= 8 to end the review loop.",
-        execute: (args, ctx) =>
-        {
-            ctx.EventActions.Escalate = true;
-            return Task.FromResult<object?>(new { status = "escalated", message = "Review loop completed." });
-        },
-        parameters: new Dictionary<string, object?>
-        {
-            ["type"] = "object",
-            ["properties"] = new Dictionary<string, object?>(),
-        });
-
-    /// <summary>Gets simulated market data for a product category.</summary>
-    /// <param name="category">The product category to look up</param>
     [FunctionTool]
-    public static object? GetMarketData(string category)
+    public static object? CountWordFrequency(string text, int topN = 5)
     {
-        return new
+        // Normalize and split into words
+        var words = WordRegex().Matches(text.ToLowerInvariant())
+            .Select(m => m.Value)
+            .Where(w => w.Length > 3) // skip short/common words
+            .Where(w => !StopWords.Contains(w))
+            .GroupBy(w => w)
+            .OrderByDescending(g => g.Count())
+            .Take(topN)
+            .Select(g => new { Word = g.Key, Count = g.Count() })
+            .ToList();
+
+        // Build markdown table
+        var table = "| Rank | Word | Count |\n|------|------|-------|\n";
+        for (var i = 0; i < words.Count; i++)
         {
-            category,
-            estimatedMarketSize = "$4.2B globally",
-            growthRate = "12% CAGR",
-            topSegments = new[] { "millennials", "health-conscious consumers", "enterprise buyers" },
-            source = "simulated-market-api"
-        };
+            table += $"| {i + 1} | {words[i].Word} | {words[i].Count} |\n";
+        }
+
+        return new { markdown_table = table, total_words_analyzed = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length };
     }
 
-    /// <summary>Gets simulated competitor information for a product category.</summary>
-    /// <param name="category">The product category to analyze</param>
-    [FunctionTool]
-    public static object? GetCompetitors(string category)
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
     {
-        return new
-        {
-            category,
-            competitors = new[]
-            {
-                new { name = "AlphaCorp", strength = "Brand recognition", weakness = "High pricing" },
-                new { name = "BetaTech", strength = "Technical features", weakness = "Poor UX" },
-                new { name = "GammaStart", strength = "Low cost", weakness = "Limited features" },
-            },
-            source = "simulated-competitor-db"
-        };
-    }
+        "the", "and", "that", "this", "with", "from", "have", "has", "been",
+        "will", "would", "could", "should", "their", "there", "they", "about",
+        "which", "when", "what", "where", "also", "more", "than", "into",
+        "some", "other", "over", "just", "like", "your", "said", "were",
+        "each", "make", "made"
+    };
+
+    [GeneratedRegex(@"\b[a-z]+\b")]
+    private static partial Regex WordRegex();
 }

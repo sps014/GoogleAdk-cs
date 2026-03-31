@@ -56,8 +56,10 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
             if (evt.Content?.Role == null)
                 continue;
 
-            // Skip empty text parts
-            if (evt.Content.Parts?.Count == 1 && evt.Content.Parts[0].Text == "")
+            // Skip events with no parts or all-empty parts
+            if (evt.Content.Parts == null || evt.Content.Parts.Count == 0)
+                continue;
+            if (evt.Content.Parts.Count == 1 && evt.Content.Parts[0].Text == "")
                 continue;
 
             // Skip events not in the current branch

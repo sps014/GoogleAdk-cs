@@ -71,6 +71,7 @@ public static class WebCommand
         builder.Services.AddSingleton(agentLoader);
         builder.Services.AddSingleton<BaseSessionService>(sessionService);
         builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService));
+        builder.Services.AddSingleton(new InMemoryTraceCollector());
 
         // CORS
         builder.Services.AddCors(options =>

@@ -97,11 +97,11 @@ public class LlmAgentConfig : BaseAgentConfig
     /// </summary>
     public string? OutputKey { get; set; }
 
-    /// <summary>Disallow transfer to parent agent.</summary>
-    public bool DisallowTransferToParent { get; set; }
+    /// <summary>Disallow transfer to parent agent. Defaults to false.</summary>
+    public bool DisallowTransferToParent { get; set; } = false;
 
-    /// <summary>Disallow transfer to peer agents.</summary>
-    public bool DisallowTransferToPeers { get; set; }
+    /// <summary>Disallow transfer to peer agents. Defaults to false.</summary>
+    public bool DisallowTransferToPeers { get; set; } = false;
 
     /// <summary>Controls how conversation contents are included in LLM requests.</summary>
     public IncludeContentsMode IncludeContents { get; set; } = IncludeContentsMode.Default;
@@ -138,8 +138,8 @@ public class LlmAgent : BaseAgent
     public Dictionary<string, object?>? OutputSchema { get; set; }
     public Dictionary<string, object?>? InputSchema { get; set; }
     public string? OutputKey { get; set; }
-    public bool DisallowTransferToParent { get; set; }
-    public bool DisallowTransferToPeers { get; set; }
+    public bool DisallowTransferToParent { get; set; } = false;
+    public bool DisallowTransferToPeers { get; set; } = false;
     public IncludeContentsMode IncludeContents { get; set; } = IncludeContentsMode.Default;
     public List<BaseLlmRequestProcessor> RequestProcessors { get; }
     public List<BaseLlmResponseProcessor> ResponseProcessors { get; }

@@ -310,24 +310,24 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         {
             case "int":
             case "System.Int32":
-                return $"System.Convert.ToInt32({expr})";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<int>({expr})";
             case "long":
             case "System.Int64":
-                return $"System.Convert.ToInt64({expr})";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<long>({expr})";
             case "float":
             case "System.Single":
-                return $"System.Convert.ToSingle({expr})";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<float>({expr})";
             case "double":
             case "System.Double":
-                return $"System.Convert.ToDouble({expr})";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<double>({expr})";
             case "bool":
             case "System.Boolean":
-                return $"System.Convert.ToBoolean({expr})";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<bool>({expr})";
             case "string":
             case "System.String":
-                return $"({expr})?.ToString() ?? string.Empty";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<string>({expr})";
             default:
-                return $"({csharpType}){expr}";
+                return $"GoogleAdk.Core.Tools.FunctionToolArgs.Get<{csharpType}>({expr})";
         }
     }
 

@@ -2,19 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // ============================================================================
-// Combined Patterns Sample — Real-World Product Launch Advisor
+// News Aggregator Sample — Sequential + Parallel Agent Pattern
 // ============================================================================
 //
-// Combines ALL agent patterns in a realistic product-launch workflow:
+// Mirrors the adk-js sequential_agent.ts pattern using C# ADK:
 //
-//   1. ParallelAgent — gathers market data, competitor info, and trends concurrently
-//   2. SequentialAgent — analyst reviews parallel results, then strategist plans
-//   3. LoopAgent — reviewer iterates on the strategy until quality is high
-//   4. Sub-Agent transfer — root coordinator routes based on user intent
-//   5. AgentTool — wraps pipelines as callable tools
-//   6. Google Search — grounded research with live web data
-//   7. OutputKey — passes structured data between agents via session state
-//   8. GlobalInstruction — consistent brand voice across all agents
+//   1. ParallelAgent — searches tech news AND sports news concurrently
+//   2. SequentialAgent — runs parallel search first, then word frequency analysis
+//   3. GoogleSearch — grounded research with live web data
+//   4. FunctionTool (C#) — counts word frequency and renders markdown table
+//   5. OutputKey — passes structured data between agents via session state
+//
+// Because SequentialAgent and ParallelAgent are NOT LlmAgents, their children
+// never get transfer_to_agent tools — no DisallowTransfer flags needed.
+// This matches the Python/JS ADK behavior exactly.
 //
 // Environment variables:
 //   GOOGLE_GENAI_USE_VERTEXAI=True
@@ -26,7 +27,6 @@ using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
-using GoogleAdk.Core.Agents.Processors;
 using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Dev;
@@ -34,197 +34,98 @@ using GoogleAdk.Models.Gemini;
 
 var model = GeminiModelFactory.Create("gemini-2.5-flash");
 
-// ── Phase 1: Parallel Research ─────────────────────────────────────────────
+// ── Parallel: Tech News + Sports News ──────────────────────────────────────
 
-var marketResearcher = new LlmAgent(new LlmAgentConfig
+var techNewsAgent = new LlmAgent(new LlmAgentConfig
 {
-    Name = "market_researcher",
-    Description = "Researches market size, target demographics, and demand signals.",
+    Name = "tech_news",
+    Description = "Searches for the latest technology news.",
     Model = model,
     Instruction = """
-        Analyze the market for the given product. Cover: market size estimate,
-        target demographics, key demand signals. Keep it under 100 words.
+        Search for the latest technology news from today. Cover: AI, startups,
+        major product launches, and tech industry trends.
+        Return a summary of 5-7 news items with headlines and brief descriptions.
         """,
-    OutputKey = "market_data",
-    DisallowTransferToParent = true,
-    DisallowTransferToPeers = true,
-    Tools = new List<IBaseTool> { GoogleAdk.Samples.Combined.CombinedTools.GetMarketDataTool },
-});
-
-var competitorAnalyst = new LlmAgent(new LlmAgentConfig
-{
-    Name = "competitor_analyst",
-    Description = "Analyzes top competitors, their strengths, and gaps.",
-    Model = model,
-    Instruction = """
-        Identify 3 key competitors for the given product. For each: name, strength,
-        and one weakness/gap we could exploit. Keep it under 100 words.
-        """,
-    OutputKey = "competitor_data",
-    DisallowTransferToParent = true,
-    DisallowTransferToPeers = true,
-    Tools = new List<IBaseTool> { GoogleAdk.Samples.Combined.CombinedTools.GetCompetitorsTool },
-});
-
-var trendScout = new LlmAgent(new LlmAgentConfig
-{
-    Name = "trend_scout",
-    Description = "Identifies relevant trends and emerging opportunities.",
-    Model = model,
-    Instruction = """
-        Identify 3 relevant trends for the given product category.
-        Focus on technology shifts, consumer behavior changes, and regulatory tailwinds.
-        Keep it under 100 words.
-        """,
-    OutputKey = "trend_data",
-    DisallowTransferToParent = true,
-    DisallowTransferToPeers = true,
-});
-
-var parallelResearch = new ParallelAgent(new BaseAgentConfig
-{
-    Name = "parallel_research",
-    Description = "Gathers market, competitor, and trend data concurrently.",
-    SubAgents = new List<BaseAgent> { marketResearcher, competitorAnalyst, trendScout },
-});
-
-// ── Phase 2: Sequential Analysis + Strategy ────────────────────────────────
-
-var synthesizer = new LlmAgent(new LlmAgentConfig
-{
-    Name = "synthesizer",
-    Description = "Synthesizes parallel research into a unified brief.",
-    Model = model,
-    Instruction = """
-        You have access to research from three agents via session state:
-        - Market data: {market_data?}
-        - Competitor data: {competitor_data?}
-        - Trend data: {trend_data?}
-
-        Synthesize into a single 150-word unified research brief with key takeaways.
-        """,
-    OutputKey = "research_brief",
-    DisallowTransferToParent = true,
-    DisallowTransferToPeers = true,
-});
-
-var strategist = new LlmAgent(new LlmAgentConfig
-{
-    Name = "strategist",
-    Description = "Creates a go-to-market strategy based on research.",
-    Model = model,
-    Instruction = """
-        Based on the research brief: {research_brief?}
-        
-        Create a go-to-market strategy with:
-        1. Positioning statement (1 sentence)
-        2. Target launch channels (3 items)
-        3. Key differentiators (3 items)
-        4. Risk mitigation (2 items)
-        
-        Keep it under 200 words, formatted as a brief.
-        """,
-    DisallowTransferToParent = true,
-    DisallowTransferToPeers = true,
-});
-
-var analysisSequence = new SequentialAgent(new BaseAgentConfig
-{
-    Name = "analysis_pipeline",
-    Description = "Synthesizes research then creates strategy.",
-    SubAgents = new List<BaseAgent> { synthesizer, strategist },
-});
-
-// ── Phase 3: Full Pipeline (parallel research → sequential analysis) ───────
-
-var fullPipeline = new SequentialAgent(new BaseAgentConfig
-{
-    Name = "launch_pipeline",
-    Description = "Full product launch analysis: parallel research → synthesis → strategy.",
-    SubAgents = new List<BaseAgent> { parallelResearch, analysisSequence },
-});
-
-// ── Phase 4: Quality Review Loop ───────────────────────────────────────────
-
-var reviewer = new LlmAgent(new LlmAgentConfig
-{
-    Name = "reviewer",
-    Description = "Reviews the strategy quality.",
-    Model = model,
-    Instruction = """
-        Review the strategy from the previous agent. Score 1-10 on:
-        actionability, specificity, and completeness.
-        If average >= 8, call the escalate tool. Otherwise give 2 improvement suggestions.
-        """,
-    Tools = new List<IBaseTool> { GoogleAdk.Samples.Combined.CombinedTools.EscalateTool },
-});
-
-// ── Quick Q&A agent (for simple follow-ups) ────────────────────────────────
-
-var qaAgent = new LlmAgent(new LlmAgentConfig
-{
-    Name = "quick_qa",
-    Description = "Answers quick follow-up questions about product strategy and marketing.",
-    Model = model,
-    Instruction = """
-        Answer quick questions about product launches, pricing strategies, marketing
-        channels, or go-to-market planning. Be concise and actionable. If the user
-        needs a full analysis, tell them to ask the coordinator for a "full launch analysis".
-        """,
+    OutputKey = "tech_news_data",
     Tools = new List<IBaseTool> { GoogleSearchTool.Instance },
 });
 
-// ── Root Coordinator ───────────────────────────────────────────────────────
-
-var coordinator = new LlmAgent(new LlmAgentConfig
+var sportsNewsAgent = new LlmAgent(new LlmAgentConfig
 {
-    Name = "coordinator",
-    Description = "Routes requests to the appropriate workflow.",
+    Name = "sports_news",
+    Description = "Searches for the latest sports news.",
     Model = model,
-    GlobalInstruction = """
-        BRAND VOICE: You work for "LaunchPad AI", a premium product strategy consultancy.
-        Always be professional, data-driven, and actionable. Use clear headings and structure.
-        """,
     Instruction = """
-        You are the coordinator for LaunchPad AI. You have two workflows:
-        
-        1. For comprehensive product launch analysis, use the 'launch_pipeline' tool.
-           This runs parallel market research, then synthesizes and creates strategy.
-        
-        2. For quick follow-up questions, transfer to the 'quick_qa' agent.
-        
-        Present results clearly to the user with proper formatting.
+        Search for the latest sports news from today. Cover: major leagues (NFL, NBA,
+        Premier League, etc.), tournaments, transfers, and notable results.
+        Return a summary of 5-7 news items with headlines and brief descriptions.
         """,
-    Tools = new List<IBaseTool> { new AgentTool(fullPipeline) },
-    SubAgents = new List<BaseAgent> { qaAgent },
+    OutputKey = "sports_news_data",
+    Tools = new List<IBaseTool> { GoogleSearchTool.Instance },
 });
 
-var runner = new InMemoryRunner("combined-patterns-sample", coordinator);
+var parallelNews = new ParallelAgent(new BaseAgentConfig
+{
+    Name = "parallel_news_search",
+    Description = "Searches tech and sports news concurrently.",
+    SubAgents = new List<BaseAgent> { techNewsAgent, sportsNewsAgent },
+});
+
+// ── Sequential: Search → Analyze ───────────────────────────────────────────
+
+var wordAnalyzer = new LlmAgent(new LlmAgentConfig
+{
+    Name = "word_analyzer",
+    Description = "Analyzes word frequency across news articles.",
+    Model = model,
+    Instruction = """
+        You have news data from two sources:
+        - Tech news: {tech_news_data?}
+        - Sports news: {sports_news_data?}
+
+        Combine ALL of the text from both news summaries into a single string and
+        call the count_word_frequency tool to find the top 5 most frequent words.
+        
+        Then present the results with:
+        1. The markdown table from the tool
+        2. A brief insight about what these top words tell us about today's news cycle
+        """,
+    Tools = new List<IBaseTool> { GoogleAdk.Samples.Combined.CombinedTools.CountWordFrequencyTool },
+});
+
+var rootAgent = new SequentialAgent(new BaseAgentConfig
+{
+    Name = "news_aggregator",
+    Description = "Searches news in parallel, then analyzes word frequency.",
+    SubAgents = new List<BaseAgent> { parallelNews, wordAnalyzer },
+});
 
 // ── Web mode: "dotnet run -- --web" launches the ADK dev UI ────────────────
 if (args.Contains("--web"))
 {
-    AdkWeb.Root = coordinator;
+    AdkWeb.Root = rootAgent;
     await AdkWeb.RunAsync();
     return;
 }
 
-// Create a persistent session so conversation history is preserved across turns
+// ── Console mode ───────────────────────────────────────────────────────────
+
+var runner = new InMemoryRunner("news-aggregator", rootAgent);
+
 var session = await runner.SessionService.CreateSessionAsync(
     new GoogleAdk.Core.Abstractions.Sessions.CreateSessionRequest
     {
-        AppName = "combined-patterns-sample",
+        AppName = "news-aggregator",
         UserId = "user-1",
     });
 
 Console.WriteLine("╔══════════════════════════════════════════════════════════╗");
-Console.WriteLine("║  ADK C# — Combined Patterns: Product Launch Advisor     ║");
+Console.WriteLine("║  ADK C# — News Aggregator: Sequential + Parallel        ║");
 Console.WriteLine("║                                                          ║");
-Console.WriteLine("║  Patterns used: Parallel + Sequential + Loop + Transfer ║");
-Console.WriteLine("║  + AgentTool + GoogleSearch + OutputKey + GlobalInstr    ║");
+Console.WriteLine("║  Patterns: ParallelAgent + SequentialAgent + GoogleSearch║");
+Console.WriteLine("║  + C# FunctionTool (word frequency)                     ║");
 Console.WriteLine("║                                                          ║");
-Console.WriteLine("║  Try: 'Analyze launching a smart water bottle'          ║");
-Console.WriteLine("║  Or:  'What are good pricing strategies for SaaS?'      ║");
+Console.WriteLine("║  Try: 'Get me the latest news'                          ║");
 Console.WriteLine("║  Type 'quit' to exit.                                   ║");
 Console.WriteLine("╚══════════════════════════════════════════════════════════╝");
 Console.WriteLine();
@@ -253,17 +154,13 @@ while (true)
         var calls = evt.GetFunctionCalls();
         foreach (var call in calls)
         {
-            if (call.Name == "transfer_to_agent")
-                Console.WriteLine($"  → Routing to: {call.Args?.GetValueOrDefault("agentName")}");
-            else
-                Console.WriteLine($"  ⚡ [{evt.Author}] tool: {call.Name}");
+            Console.WriteLine($"  ⚡ [{evt.Author}] tool: {call.Name}");
         }
 
-        // Show agent responses (non-partial only)
+        // Show agent responses
         if (text != null && evt.Partial != true)
         {
-            // Show sub-agent outputs as compact summaries, coordinator output in full
-            if (evt.Author == "coordinator")
+            if (evt.Author == "word_analyzer")
             {
                 Console.WriteLine($"[{evt.Author}]:");
                 Console.WriteLine(text);

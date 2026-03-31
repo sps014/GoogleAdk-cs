@@ -6,6 +6,7 @@ using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Sessions;
 using GoogleAdk.Dev.Server;
 using Microsoft.Extensions.FileProviders;
+using System.Diagnostics;
 
 namespace GoogleAdk.Dev;
 
@@ -45,6 +46,7 @@ public static class AdkWeb
         builder.Services.AddSingleton(agentLoader);
         builder.Services.AddSingleton<BaseSessionService>(sessionService);
         builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService));
+        builder.Services.AddSingleton(new InMemoryTraceCollector());
 
         builder.Services.AddCors(options =>
         {

@@ -6,6 +6,7 @@ using GoogleAdk.Core.Abstractions.Models;
 using Microsoft.Extensions.AI;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace GoogleAdk.Models.Meai;
 
@@ -140,12 +141,23 @@ public class MeaiLlm : BaseLlm
                     }
                     else if (part.FunctionCall != null)
                     {
+                        // GenerativeAI.Microsoft's ToJsonNode() calls .AsObject() on every
+                        // value in the args dictionary, so values MUST be JsonNode-derived
+                        // objects (not JsonElement or raw CLR types).
+                        // Deserializing to Dictionary<string, JsonNode?> ensures this.
+                        IDictionary<string, object?>? safeArgs = null;
+                        if (part.FunctionCall.Args != null)
+                        {
+                            var json = JsonSerializer.Serialize(part.FunctionCall.Args);
+                            var nodeDict = JsonSerializer.Deserialize<Dictionary<string, JsonNode?>>(json);
+                            safeArgs = nodeDict?.ToDictionary(
+                                kv => kv.Key,
+                                kv => (object?)kv.Value);
+                        }
                         aiContents.Add(new FunctionCallContent(
                             part.FunctionCall.Id ?? string.Empty,
                             part.FunctionCall.Name ?? string.Empty,
-                            part.FunctionCall.Args != null
-                                ? new Dictionary<string, object?>(part.FunctionCall.Args)
-                                : null));
+                            safeArgs));
                     }
                     else if (part.FunctionResponse != null)
                     {
@@ -167,7 +179,11 @@ public class MeaiLlm : BaseLlm
                 }
             }
 
-            messages.Add(new ChatMessage(role, aiContents));
+            // Skip empty messages — Vertex AI rejects Content with no Parts
+            if (aiContents.Count > 0)
+            {
+                messages.Add(new ChatMessage(role, aiContents));
+            }
         }
 
         return messages;

@@ -1,10 +1,34 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
 
 namespace GoogleAdk.Core.Tools;
+
+/// <summary>
+/// Helpers for safely extracting typed values from a tool args dictionary
+/// whose values may be JsonNode, JsonElement, or boxed primitives.
+/// </summary>
+public static class FunctionToolArgs
+{
+    public static T Get<T>(object? value)
+    {
+        if (value is T already) return already;
+        if (value is JsonNode node)
+        {
+            // Let JsonNode handle the conversion natively
+            return node.GetValue<T>();
+        }
+        if (value is JsonElement elem)
+        {
+            return JsonSerializer.Deserialize<T>(elem.GetRawText())!;
+        }
+        return (T)Convert.ChangeType(value, typeof(T))!;
+    }
+}
 
 /// <summary>
 /// A tool that wraps a C# function/delegate. The simplest way to create a tool.
