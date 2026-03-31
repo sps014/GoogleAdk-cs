@@ -1,0 +1,250 @@
+// Copyright 2025 Google LLC
+// SPDX-License-Identifier: Apache-2.0
+
+using GoogleAdk.Core.Abstractions.Artifacts;
+using GoogleAdk.Core.Abstractions.Auth;
+using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core.Abstractions.Memory;
+using GoogleAdk.Core.Abstractions.Models;
+using GoogleAdk.Core.Abstractions.Sessions;
+using GoogleAdk.Core.Agents;
+using GoogleAdk.Core.Plugins;
+using System.Runtime.CompilerServices;
+
+namespace GoogleAdk.Core.Runner;
+
+/// <summary>
+/// Configuration for the Runner.
+/// </summary>
+public class RunnerConfig
+{
+    public required string AppName { get; set; }
+    public required BaseAgent Agent { get; set; }
+    public required BaseSessionService SessionService { get; set; }
+    public IBaseArtifactService? ArtifactService { get; set; }
+    public IBaseMemoryService? MemoryService { get; set; }
+    public IBaseCredentialService? CredentialService { get; set; }
+    public IEnumerable<BasePlugin>? Plugins { get; set; }
+}
+
+/// <summary>
+/// The Runner orchestrates agent execution: sets up sessions, runs plugin hooks,
+/// and yields events from the agent.
+/// </summary>
+public class Runner
+{
+    public string AppName { get; }
+    public BaseAgent Agent { get; }
+    public PluginManager PluginManager { get; }
+    public IBaseArtifactService? ArtifactService { get; }
+    public BaseSessionService SessionService { get; }
+    public IBaseMemoryService? MemoryService { get; }
+    public IBaseCredentialService? CredentialService { get; }
+
+    public Runner(RunnerConfig config)
+    {
+        AppName = config.AppName;
+        Agent = config.Agent;
+        PluginManager = new PluginManager(config.Plugins);
+        ArtifactService = config.ArtifactService;
+        SessionService = config.SessionService;
+        MemoryService = config.MemoryService;
+        CredentialService = config.CredentialService;
+    }
+
+    /// <summary>
+    /// Runs the agent with a new, ephemeral session that is deleted after execution.
+    /// </summary>
+    public async IAsyncEnumerable<Event> RunEphemeralAsync(
+        string userId,
+        Content newMessage,
+        Dictionary<string, object?>? stateDelta = null,
+        RunConfig? runConfig = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var session = await SessionService.CreateSessionAsync(new CreateSessionRequest
+        {
+            AppName = AppName,
+            UserId = userId,
+        });
+
+        try
+        {
+            await foreach (var evt in RunAsync(userId, session.Id, newMessage, stateDelta, runConfig, cancellationToken))
+            {
+                yield return evt;
+            }
+        }
+        finally
+        {
+            await SessionService.DeleteSessionAsync(new DeleteSessionRequest
+            {
+                AppName = AppName,
+                UserId = userId,
+                SessionId = session.Id,
+            });
+        }
+    }
+
+    /// <summary>
+    /// Runs the agent with the given message, yielding events as an async stream.
+    /// </summary>
+    public async IAsyncEnumerable<Event> RunAsync(
+        string userId,
+        string sessionId,
+        Content newMessage,
+        Dictionary<string, object?>? stateDelta = null,
+        RunConfig? runConfig = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        runConfig ??= new RunConfig();
+
+        // Setup session
+        var session = await SessionService.GetSessionAsync(new GetSessionRequest
+        {
+            AppName = AppName,
+            UserId = userId,
+            SessionId = sessionId,
+        }) ?? throw new InvalidOperationException($"Session not found: {sessionId}");
+
+        // Create invocation context
+        var invocationContext = new InvocationContext
+        {
+            ArtifactService = ArtifactService,
+            SessionService = SessionService,
+            MemoryService = MemoryService,
+            CredentialService = CredentialService,
+            InvocationId = $"e-{Guid.NewGuid()}",
+            Agent = Agent,
+            Session = session,
+            UserContent = newMessage,
+            RunConfig = runConfig,
+            PluginManager = PluginManager,
+        };
+
+        // Plugin: onUserMessage
+        var pluginUserMessage = await PluginManager.RunOnUserMessageCallbackAsync(invocationContext, newMessage);
+        if (pluginUserMessage != null)
+            newMessage = pluginUserMessage;
+
+        // Append user message to session
+        if (newMessage.Parts != null && newMessage.Parts.Count > 0)
+        {
+            var userEvent = Event.Create(e =>
+            {
+                e.InvocationId = invocationContext.InvocationId;
+                e.Author = "user";
+                e.Content = newMessage;
+                if (stateDelta != null)
+                    e.Actions = EventActions.Create(a => a.StateDelta = stateDelta);
+            });
+
+            await SessionService.AppendEventAsync(new AppendEventRequest
+            {
+                Session = session,
+                Event = userEvent,
+            });
+        }
+
+        // Determine which agent should handle this (for session resumption)
+        invocationContext.Agent = DetermineAgentForResumption(session, Agent);
+
+        // Plugin: beforeRun
+        var beforeRunResult = await PluginManager.RunBeforeRunCallbackAsync(invocationContext);
+        if (beforeRunResult != null)
+        {
+            var earlyExitEvent = Event.Create(e =>
+            {
+                e.InvocationId = invocationContext.InvocationId;
+                e.Author = "model";
+                e.Content = beforeRunResult;
+            });
+
+            await SessionService.AppendEventAsync(new AppendEventRequest
+            {
+                Session = session,
+                Event = earlyExitEvent,
+            });
+            yield return earlyExitEvent;
+            yield break;
+        }
+
+        // Run the agent
+        await foreach (var evt in invocationContext.Agent.RunAsync(invocationContext).WithCancellation(cancellationToken))
+        {
+            if (evt.Partial != true)
+            {
+                await SessionService.AppendEventAsync(new AppendEventRequest
+                {
+                    Session = session,
+                    Event = evt,
+                });
+            }
+
+            // Plugin: onEvent
+            var modifiedEvent = await PluginManager.RunOnEventCallbackAsync(invocationContext, evt);
+            yield return modifiedEvent ?? evt;
+        }
+
+        // Plugin: afterRun
+        await PluginManager.RunAfterRunCallbackAsync(invocationContext);
+    }
+
+    /// <summary>
+    /// Determines which agent should handle the session based on the last event.
+    /// Used for session resumption after agent transfers.
+    /// </summary>
+    private BaseAgent DetermineAgentForResumption(Session session, BaseAgent rootAgent)
+    {
+        if (session.Events.Count == 0)
+            return rootAgent;
+
+        // Case 1: If the last event is a function response, find the original caller
+        var lastEvent = session.Events[^1];
+        var functionResponse = lastEvent.Content?.Parts?.FirstOrDefault(p => p.FunctionResponse != null);
+        if (functionResponse?.FunctionResponse?.Id != null)
+        {
+            var callId = functionResponse.FunctionResponse.Id;
+            for (int i = session.Events.Count - 2; i >= 0; i--)
+            {
+                var callEvent = session.Events[i];
+                var calls = callEvent.GetFunctionCalls();
+                if (calls?.Any(c => c.Id == callId) == true)
+                {
+                    var foundAgent = rootAgent.FindAgent(callEvent.Author ?? string.Empty);
+                    if (foundAgent != null) return foundAgent;
+                }
+            }
+        }
+
+        // Case 2: Find the last agent that emitted a message and is routable
+        for (int i = session.Events.Count - 1; i >= 0; i--)
+        {
+            var evt = session.Events[i];
+            if (evt.Author == "user" || string.IsNullOrEmpty(evt.Author))
+                continue;
+
+            if (evt.Author == rootAgent.Name)
+                return rootAgent;
+
+            var agent = rootAgent.FindSubAgent(evt.Author!);
+            if (agent != null && IsRoutableLlmAgent(agent))
+                return agent;
+        }
+
+        return rootAgent;
+    }
+
+    private static bool IsRoutableLlmAgent(BaseAgent? agent)
+    {
+        while (agent != null)
+        {
+            if (agent is not LlmAgent llmAgent)
+                return false;
+            if (llmAgent.DisallowTransferToParent)
+                return false;
+            agent = agent.ParentAgent;
+        }
+        return true;
+    }
+}

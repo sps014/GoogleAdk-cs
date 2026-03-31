@@ -1,0 +1,179 @@
+// Copyright 2025 Google LLC
+// SPDX-License-Identifier: Apache-2.0
+
+using System.Runtime.CompilerServices;
+using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core.Abstractions.Models;
+
+namespace GoogleAdk.Core.Agents.Processors;
+
+/// <summary>
+/// Populates the LLM request contents from the session event history.
+/// Handles include_contents modes: 'default' (full history) or 'none' (current turn only).
+/// Filters by branch, skips auth/confirmation events, and converts foreign agent events.
+/// </summary>
+public class ContentRequestProcessor : BaseLlmRequestProcessor
+{
+    public static readonly ContentRequestProcessor Instance = new();
+
+    public override async IAsyncEnumerable<Event> RunAsync(
+        InvocationContext invocationContext,
+        LlmRequest llmRequest)
+    {
+        await Task.CompletedTask;
+
+        if (invocationContext.Agent is not LlmAgent agent)
+            yield break;
+
+        var events = invocationContext.Session.Events;
+        if (events == null || events.Count == 0)
+            yield break;
+
+        if (agent.IncludeContents == IncludeContentsMode.None)
+        {
+            llmRequest.Contents = GetCurrentTurnContents(events, agent.Name, invocationContext.Branch);
+        }
+        else
+        {
+            llmRequest.Contents = GetContents(events, agent.Name, invocationContext.Branch);
+        }
+    }
+
+    /// <summary>
+    /// Gets full conversation history as contents for the LLM request.
+    /// </summary>
+    public static List<Content> GetContents(IReadOnlyList<Event> events, string agentName, string? currentBranch)
+    {
+        var filteredEvents = new List<Event>();
+
+        foreach (var evt in events)
+        {
+            // Skip events without content
+            if (evt.Content?.Role == null)
+                continue;
+
+            // Skip empty text parts
+            if (evt.Content.Parts?.Count == 1 && evt.Content.Parts[0].Text == "")
+                continue;
+
+            // Skip events not in the current branch
+            if (currentBranch != null && evt.Branch != null && !currentBranch.StartsWith(evt.Branch))
+                continue;
+
+            // Skip auth events
+            if (IsAuthEvent(evt))
+                continue;
+
+            // Skip tool confirmation events
+            if (IsToolConfirmationEvent(evt))
+                continue;
+
+            // Convert events from other agents to user messages
+            if (IsEventFromAnotherAgent(agentName, evt))
+                filteredEvents.Add(ConvertForeignEvent(evt));
+            else
+                filteredEvents.Add(evt);
+        }
+
+        // Build contents, rearranging function responses as needed
+        var contents = new List<Content>();
+        foreach (var evt in filteredEvents)
+        {
+            if (evt.Content != null)
+                contents.Add(CloneContent(evt.Content));
+        }
+        return contents;
+    }
+
+    /// <summary>
+    /// Gets contents for the current turn only (no conversation history).
+    /// </summary>
+    public static List<Content> GetCurrentTurnContents(IReadOnlyList<Event> events, string agentName, string? currentBranch)
+    {
+        // Find the latest event that starts the current turn
+        for (int i = events.Count - 1; i >= 0; i--)
+        {
+            var evt = events[i];
+            if (evt.Author == "user" || IsEventFromAnotherAgent(agentName, evt))
+            {
+                var slice = new List<Event>();
+                for (int j = i; j < events.Count; j++)
+                    slice.Add(events[j]);
+                return GetContents(slice, agentName, currentBranch);
+            }
+        }
+        return GetContents(events, agentName, currentBranch);
+    }
+
+    private static bool IsAuthEvent(Event evt)
+    {
+        var functionCalls = evt.GetFunctionCalls();
+        return functionCalls.Any(fc => fc.Name == "adk_request_credential");
+    }
+
+    private static bool IsToolConfirmationEvent(Event evt)
+    {
+        var functionCalls = evt.GetFunctionCalls();
+        return functionCalls.Any(fc => fc.Name == "adk_request_confirmation");
+    }
+
+    private static bool IsEventFromAnotherAgent(string agentName, Event evt)
+        => evt.Author != null && evt.Author != "user" && evt.Author != agentName;
+
+    private static Event ConvertForeignEvent(Event evt)
+    {
+        // Convert model events from other agents to user messages
+        var content = evt.Content;
+        if (content?.Role == "model")
+        {
+            var textParts = content.Parts?
+                .Where(p => p.Text != null)
+                .Select(p => new Part { Text = $"[{evt.Author}] {p.Text}" })
+                .ToList() ?? new List<Part>();
+
+            if (textParts.Count > 0)
+            {
+                var cloned = Event.Create(e =>
+                {
+                    e.InvocationId = evt.InvocationId;
+                    e.Author = evt.Author;
+                    e.Branch = evt.Branch;
+                    e.Content = new Content
+                    {
+                        Role = "user",
+                        Parts = textParts
+                    };
+                });
+                return cloned;
+            }
+        }
+        return evt;
+    }
+
+    private static Content CloneContent(Content original)
+    {
+        return new Content
+        {
+            Role = original.Role,
+            Parts = original.Parts?.Select(p => new Part
+            {
+                Text = p.Text,
+                FunctionCall = p.FunctionCall,
+                FunctionResponse = p.FunctionResponse,
+                InlineData = p.InlineData,
+            }).ToList()
+        };
+    }
+}
+
+/// <summary>
+/// Controls how conversation contents are included in LLM requests.
+/// </summary>
+public enum IncludeContentsMode
+{
+    /// <summary>Model receives relevant conversation history.</summary>
+    Default,
+
+    /// <summary>Model receives no prior history, operates solely on current instruction and input.</summary>
+    None
+}
