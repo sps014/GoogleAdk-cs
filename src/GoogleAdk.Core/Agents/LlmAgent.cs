@@ -473,8 +473,10 @@ public class LlmAgent : BaseAgent
         var llm = CanonicalModel;
         invocationContext.IncrementLlmCallCount();
 
+        using var llmSpan = Telemetry.AdkTracing.StartSpan("call_llm");
         await foreach (var llmResponse in llm.GenerateContentAsync(llmRequest).WithCancellation(cancellationToken))
         {
+            Telemetry.AdkTracing.TraceCallLlm(invocationContext, modelResponseEvent.Id, llmRequest, llmResponse);
             // Plugin after model → canonical after model
             var altered = await HandleAfterModelCallbackAsync(invocationContext, llmResponse, callbackContext);
             yield return altered ?? llmResponse;

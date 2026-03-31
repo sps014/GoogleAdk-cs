@@ -96,6 +96,7 @@ public abstract class BaseAgent
         InvocationContext parentContext,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        using var span = Telemetry.AdkTracing.StartSpan(Name);
         var context = CreateInvocationContext(parentContext);
 
         var beforeEvent = await HandleBeforeAgentCallbackAsync(context);
@@ -104,6 +105,8 @@ public abstract class BaseAgent
             yield return beforeEvent;
             if (context.EndInvocation) yield break;
         }
+
+        Telemetry.AdkTracing.TraceAgentInvocation(this, context);
 
         await foreach (var evt in RunAsyncImpl(context, cancellationToken).WithCancellation(cancellationToken))
         {

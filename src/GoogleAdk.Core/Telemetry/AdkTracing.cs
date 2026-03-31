@@ -110,6 +110,8 @@ public static class AdkTracing
 
         activity.SetTag(GenAiOperationName, "call_llm");
         activity.SetTag(GenAiAgentName, invocationContext.Agent.Name);
+        activity.SetTag("gen_ai.system", "gcp.vertex.agent");
+        activity.SetTag("gcp.vertex.agent.session_id", invocationContext.Session.Id);
         activity.SetTag("gcp.vertex.agent.llm_request",
             ShouldAddRequestResponseToSpans() ? SafeJsonSerialize(BuildLlmRequestForTrace(llmRequest)) : "{}");
         activity.SetTag("gcp.vertex.agent.llm_response",

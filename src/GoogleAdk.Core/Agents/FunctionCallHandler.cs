@@ -1,6 +1,7 @@
 // Copyright 2025 Google LLC
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Tools;
@@ -111,8 +112,10 @@ public static class FunctionCallHandler
 
             // Step 3: Execute the tool
             string? errorMessage = null;
+            Activity? toolSpan = null;
             if (functionResponse == null)
             {
+                toolSpan = Telemetry.AdkTracing.StartSpan($"execute_tool {tool.Name}");
                 try
                 {
                     var rawResult = await tool.RunAsync(args, toolContext);
@@ -160,14 +163,29 @@ public static class FunctionCallHandler
             else if (functionResponse == null)
                 functionResponse = new Dictionary<string, object?> { ["result"] = null };
 
-            responseEvents.Add(BuildFunctionResponseEvent(
-                invocationContext, functionCall, functionResponse, toolContext.EventActions));
+            var responseEvent = BuildFunctionResponseEvent(
+                invocationContext, functionCall, functionResponse, toolContext.EventActions);
+
+            // Trace individual tool call (must happen while toolSpan is still active)
+            Telemetry.AdkTracing.TraceToolCall(tool, args, responseEvent);
+            toolSpan?.Dispose();
+
+            responseEvents.Add(responseEvent);
         }
 
         if (responseEvents.Count == 0)
             return null;
 
-        return MergeParallelFunctionResponseEvents(responseEvents);
+        var mergedEvent = MergeParallelFunctionResponseEvents(responseEvents);
+
+        // Trace merged tool calls if there were multiple
+        if (responseEvents.Count > 1)
+        {
+            using var mergedSpan = Telemetry.AdkTracing.StartSpan("execute_tool (merged)");
+            Telemetry.AdkTracing.TraceMergedToolCalls(mergedEvent.Id, mergedEvent);
+        }
+
+        return mergedEvent;
     }
 
     /// <summary>
