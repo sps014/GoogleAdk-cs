@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 
@@ -37,6 +38,9 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
         {
             llmRequest.Contents = GetContents(events, agent.Name, invocationContext.Branch);
         }
+
+        // Ensure the request ends with a user content so the model can respond
+        llmRequest.MaybeAppendUserContent();
     }
 
     /// <summary>
@@ -107,14 +111,18 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
 
     private static bool IsAuthEvent(Event evt)
     {
-        var functionCalls = evt.GetFunctionCalls();
-        return functionCalls.Any(fc => fc.Name == "adk_request_credential");
+        if (evt.Content?.Parts == null) return false;
+        return evt.Content.Parts.Any(p =>
+            p.FunctionCall?.Name == FunctionCallHandler.RequestEucFunctionCallName ||
+            p.FunctionResponse?.Name == FunctionCallHandler.RequestEucFunctionCallName);
     }
 
     private static bool IsToolConfirmationEvent(Event evt)
     {
-        var functionCalls = evt.GetFunctionCalls();
-        return functionCalls.Any(fc => fc.Name == "adk_request_confirmation");
+        if (evt.Content?.Parts == null) return false;
+        return evt.Content.Parts.Any(p =>
+            p.FunctionCall?.Name == FunctionCallHandler.RequestConfirmationFunctionCallName ||
+            p.FunctionResponse?.Name == FunctionCallHandler.RequestConfirmationFunctionCallName);
     }
 
     private static bool IsEventFromAnotherAgent(string agentName, Event evt)
@@ -122,32 +130,57 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
 
     private static Event ConvertForeignEvent(Event evt)
     {
-        // Convert model events from other agents to user messages
-        var content = evt.Content;
-        if (content?.Role == "model")
-        {
-            var textParts = content.Parts?
-                .Where(p => p.Text != null)
-                .Select(p => new Part { Text = $"[{evt.Author}] {p.Text}" })
-                .ToList() ?? new List<Part>();
+        if (evt.Content?.Parts == null || evt.Content.Parts.Count == 0)
+            return evt;
 
-            if (textParts.Count > 0)
+        // Convert ALL parts from foreign agents into text descriptions (role=user).
+        // This provides context to the current agent without confusing it with
+        // raw function calls/responses it never made.
+        var textParts = new List<Part> { new Part { Text = "For context:" } };
+
+        foreach (var part in evt.Content.Parts)
+        {
+            if (part.Text != null)
             {
-                var cloned = Event.Create(e =>
+                textParts.Add(new Part { Text = $"[{evt.Author}] said: {part.Text}" });
+            }
+            else if (part.FunctionCall != null)
+            {
+                var argsText = part.FunctionCall.Args != null
+                    ? JsonSerializer.Serialize(part.FunctionCall.Args)
+                    : "{}";
+                textParts.Add(new Part
                 {
-                    e.InvocationId = evt.InvocationId;
-                    e.Author = evt.Author;
-                    e.Branch = evt.Branch;
-                    e.Content = new Content
-                    {
-                        Role = "user",
-                        Parts = textParts
-                    };
+                    Text = $"[{evt.Author}] called tool `{part.FunctionCall.Name}` with parameters: {argsText}"
                 });
-                return cloned;
+            }
+            else if (part.FunctionResponse != null)
+            {
+                var responseText = part.FunctionResponse.Response != null
+                    ? JsonSerializer.Serialize(part.FunctionResponse.Response)
+                    : "{}";
+                textParts.Add(new Part
+                {
+                    Text = $"[{evt.Author}] tool `{part.FunctionResponse.Name}` returned result: {responseText}"
+                });
+            }
+            else
+            {
+                textParts.Add(part);
             }
         }
-        return evt;
+
+        return Event.Create(e =>
+        {
+            e.InvocationId = evt.InvocationId;
+            e.Author = "user";
+            e.Branch = evt.Branch;
+            e.Content = new Content
+            {
+                Role = "user",
+                Parts = textParts
+            };
+        });
     }
 
     private static Content CloneContent(Content original)
