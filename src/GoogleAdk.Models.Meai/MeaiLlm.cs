@@ -149,9 +149,14 @@ public class MeaiLlm : BaseLlm
                     }
                     else if (part.FunctionResponse != null)
                     {
+                        // Serialize to JsonElement so the downstream GenerativeAI library
+                        // can call .AsObject() on it without type-mismatch errors.
+                        var responseDict = part.FunctionResponse.Response ?? new Dictionary<string, object?>();
+                        var jsonResult = JsonSerializer.Deserialize<JsonElement>(
+                            JsonSerializer.Serialize(responseDict));
                         aiContents.Add(new FunctionResultContent(
                             part.FunctionResponse.Id ?? string.Empty,
-                            part.FunctionResponse.Response ?? new Dictionary<string, object?>()));
+                            jsonResult));
                     }
                     else if (part.InlineData != null)
                     {
