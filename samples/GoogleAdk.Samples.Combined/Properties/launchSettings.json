@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "GoogleAdk.Samples.Combined": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:63860;http://localhost:63861"
+    }
+  }
+}

@@ -22,33 +22,54 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
 {
     private const string AttributeFullName = "GoogleAdk.Core.Abstractions.Tools.FunctionToolAttribute";
 
+    private static readonly DiagnosticDescriptor MissingDocError = new DiagnosticDescriptor(
+        id: "ADK001",
+        title: "Missing XML Documentation",
+        messageFormat: "Method '{0}' is marked as [FunctionTool] but lacks an XML documentation <summary>. LLM tools require descriptions.",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 1. Collect candidate methods with [FunctionTool]
-        var methods = context.SyntaxProvider
+        var extracted = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 AttributeFullName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
-                transform: static (ctx, ct) => ExtractModel(ctx, ct))
-            .Where(static m => m is not null)
-            .Select(static (m, _) => m!);
+                transform: static (ctx, ct) => ExtractModel(ctx, ct));
+
+        // Report diagnostics
+        context.RegisterSourceOutput(extracted, static (spc, result) =>
+        {
+            if (!result.Diagnostics.IsDefaultOrEmpty)
+            {
+                foreach (var diag in result.Diagnostics)
+                {
+                    spc.ReportDiagnostic(diag);
+                }
+            }
+        });
 
         // 2. Emit source for each containing class
-        var grouped = methods.Collect();
-        context.RegisterSourceOutput(grouped, static (spc, models) => Emit(spc, models));
+        var validModels = extracted
+            .Where(static r => r.Model is not null)
+            .Select(static (r, _) => r.Model!)
+            .Collect();
+
+        context.RegisterSourceOutput(validModels, static (spc, models) => Emit(spc, models));
     }
 
     // ------------------------------------------------------------------
     // Model extraction (runs in the pipeline, must be deterministic)
     // ------------------------------------------------------------------
 
-    private static ToolModel? ExtractModel(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
+    private static ExtractionResult ExtractModel(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
     {
         if (ctx.TargetSymbol is not IMethodSymbol method)
-            return null;
+            return new ExtractionResult(null, ImmutableArray<Diagnostic>.Empty);
 
         if (method.ContainingType is null)
-            return null;
+            return new ExtractionResult(null, ImmutableArray<Diagnostic>.Empty);
 
         // Read attribute properties
         var attr = ctx.Attributes.First(a =>
@@ -67,25 +88,43 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         // Tool name: attribute override or PascalCase → snake_case
         string toolName = nameOverride ?? ToSnakeCase(method.Name);
 
-        // XML doc
-        string xml = method.GetDocumentationCommentXml(cancellationToken: ct) ?? "";
+        // XML doc extraction (reads directly from syntax tree to avoid requiring <GenerateDocumentationFile>true</GenerateDocumentationFile>)
         string description = "";
         var paramDescriptions = new Dictionary<string, string>();
 
-        if (!string.IsNullOrEmpty(xml))
+        if (ctx.TargetNode is MethodDeclarationSyntax methodSyntax)
         {
-            try
+            var leadingTriviaStr = methodSyntax.GetLeadingTrivia().ToFullString();
+            var rawLines = leadingTriviaStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var sbDoc = new StringBuilder();
+            sbDoc.AppendLine("<root>");
+            int docLinesCount = 0;
+            foreach (var line in rawLines)
             {
-                var doc = XDocument.Parse(xml);
-                description = doc.Descendants("summary").FirstOrDefault()?.Value.Trim() ?? "";
-                foreach (var p in doc.Descendants("param"))
+                var trimmed = line.TrimStart();
+                if (trimmed.StartsWith("///"))
                 {
-                    var pName = p.Attribute("name")?.Value;
-                    if (pName != null)
-                        paramDescriptions[pName] = p.Value.Trim();
+                    sbDoc.AppendLine(trimmed.Substring(3).TrimStart());
+                    docLinesCount++;
                 }
             }
-            catch { /* malformed XML – ignore */ }
+            sbDoc.AppendLine("</root>");
+
+            if (docLinesCount > 0)
+            {
+                try
+                {
+                    var doc = XDocument.Parse(sbDoc.ToString());
+                    description = doc.Descendants("summary").FirstOrDefault()?.Value.Trim() ?? "";
+                    foreach (var p in doc.Descendants("param"))
+                    {
+                        var pName = p.Attribute("name")?.Value;
+                        if (pName != null)
+                            paramDescriptions[pName] = p.Value.Trim();
+                    }
+                }
+                catch { /* malformed XML – ignore */ }
+            }
         }
 
         // Parameters (skip CancellationToken, AgentContext)
@@ -122,7 +161,7 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         string containingTypeName = method.ContainingType.Name;
         bool isContainingTypeStatic = method.ContainingType.IsStatic;
 
-        return new ToolModel
+        var model = new ToolModel
         {
             ToolName = toolName,
             Description = description,
@@ -136,6 +175,15 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             IsContainingTypeStatic = isContainingTypeStatic,
             IsStatic = method.IsStatic,
         };
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var diag = Diagnostic.Create(MissingDocError, location, method.Name);
+            return new ExtractionResult(model, ImmutableArray.Create(diag));
+        }
+
+        return new ExtractionResult(model, ImmutableArray<Diagnostic>.Empty);
     }
 
     // ------------------------------------------------------------------
@@ -482,4 +530,16 @@ internal sealed class ParamModel
     public string JsonType { get; set; } = "";
     public string? Description { get; set; }
     public bool IsRequired { get; set; }
+}
+
+internal readonly struct ExtractionResult
+{
+    public ToolModel? Model { get; }
+    public ImmutableArray<Diagnostic> Diagnostics { get; }
+
+    public ExtractionResult(ToolModel? model, ImmutableArray<Diagnostic> diagnostics)
+    {
+        Model = model;
+        Diagnostics = diagnostics;
+    }
 }
