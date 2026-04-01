@@ -11,8 +11,12 @@ public delegate bool ToolPredicate(BaseTool tool, AgentContext context);
 /// Base class for a toolset — a managed collection of tools.
 /// Toolsets can dynamically resolve which tools to expose and can process LLM requests.
 /// </summary>
-public abstract class BaseToolset : IAsyncDisposable
+public abstract class BaseToolset : GoogleAdk.Core.Abstractions.Events.IBaseTool, IAsyncDisposable
 {
+    public string Name => GetType().Name;
+    public string Description => "A dynamic toolset.";
+    public bool IsLongRunning => false;
+    public GoogleAdk.Core.Abstractions.Models.FunctionDeclaration? GetDeclaration() => null;
     /// <summary>Optional filter: either a predicate delegate or a list of tool names.</summary>
     public ToolPredicate? ToolFilterPredicate { get; }
 

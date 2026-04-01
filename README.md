@@ -54,7 +54,7 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
 {
     Name = "search_assistant",
     Description = "An assistant that can search the web.",
-    Model = "gemini-2.5-flash",
+    ModelName = "gemini-2.5-flash",
     Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed.",
     Tools = [ToolRegistry.GOOGLE_SEARCH],
 });

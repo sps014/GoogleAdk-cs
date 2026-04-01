@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\GoogleAdk.Core\GoogleAdk.Core.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.Core.Abstractions\GoogleAdk.Core.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.Tools.OpenApi\GoogleAdk.Tools.OpenApi.csproj" />
   </ItemGroup>
 
 </Project>

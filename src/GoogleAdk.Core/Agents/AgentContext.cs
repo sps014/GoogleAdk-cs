@@ -1,5 +1,7 @@
+using GoogleAdk.Core.Abstractions.Auth;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Sessions;
+using GoogleAdk.Core.Auth;
 
 namespace GoogleAdk.Core.Agents;
 
@@ -25,4 +27,19 @@ public class AgentContext
     public string AppName => InvocationContext.AppName;
     public string UserId => InvocationContext.UserId;
     public Session Session => InvocationContext.Session;
+
+    public void RequestCredential(AuthConfig authConfig)
+    {
+        if (string.IsNullOrEmpty(FunctionCallId))
+            throw new InvalidOperationException("FunctionCallId is not set.");
+
+        var authHandler = new AuthHandler(authConfig);
+        EventActions.RequestedAuthConfigs[FunctionCallId] = authHandler.GenerateAuthRequest();
+    }
+
+    public AuthCredential? GetAuthResponse(AuthConfig authConfig)
+    {
+        var authHandler = new AuthHandler(authConfig);
+        return authHandler.GetAuthResponse(State);
+    }
 }
