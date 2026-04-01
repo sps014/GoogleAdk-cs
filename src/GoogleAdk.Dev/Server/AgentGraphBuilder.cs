@@ -56,11 +56,6 @@ public static class AgentGraphBuilder
         var borderColor = isHighlighted ? "#0F5223" : "#cccccc";
 
         var label = agent.Name;
-        if (agent is LlmAgent llm && llm.Tools.Count > 0)
-        {
-            var toolNames = string.Join("\\n", llm.Tools.Select(t => t.Name));
-            label = $"{agent.Name}\\n---\\n{toolNames}";
-        }
 
         sb.AppendLine($"  \"{agent.Name}\" [label=\"{label}\", fillcolor=\"{fillColor}\", color=\"{borderColor}\"];");
 

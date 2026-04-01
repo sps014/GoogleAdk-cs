@@ -153,15 +153,10 @@ public class Runner
                 Event = userEvent,
             });
 
-            // Pass the user's uploaded artifact delta to PendingArtifactDelta so that
-            // the ADK Web UI receives it on the first model response event (matching
-            // the Python ADK SaveFilesAsArtifactsPlugin.before_agent_callback behaviour).
-            if (artifactDelta != null)
-            {
-                invocationContext.PendingArtifactDelta ??= new Dictionary<string, int>();
-                foreach (var kvp in artifactDelta)
-                    invocationContext.PendingArtifactDelta[kvp.Key] = kvp.Value;
-            }
+            // User-uploaded artifact deltas are saved but NOT propagated to
+            // PendingArtifactDelta.  The Web UI already shows the user's upload
+            // in the chat; emitting an extra artifactDelta would cause a
+            // duplicate artifact chip to appear.
 
         }
 

@@ -148,12 +148,32 @@ public static class AdkApiEndpoints
                     runConfig: runConfig,
                     cancellationToken: http.RequestAborted))
                 {
-                    // Send events as-is without splitting. The ADK Web UI processes
-                    // artifactDelta only on events that have content (via storeMessage),
-                    // so content-less artifact-only events would be silently ignored.
-                    var json = JsonSerializer.Serialize(evt, s_jsonOptions);
-                    await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
-                    await http.Response.Body.FlushAsync(http.RequestAborted);
+                    // ADK Web UI renders artifacts both during part processing
+                    // (storeMessage) and during action processing (processActionArtifact).
+                    // To avoid double-rendering, split events that have both content
+                    // and artifactDelta into two SSE events (matching Python ADK server).
+                    if (evt.Content?.Parts?.Count > 0 && evt.Actions.ArtifactDelta.Count > 0)
+                    {
+                        // 1) Content event with artifactDelta cleared
+                        var savedDelta = evt.Actions.ArtifactDelta;
+                        evt.Actions.ArtifactDelta = new Dictionary<string, int>();
+                        var contentJson = JsonSerializer.Serialize(evt, s_jsonOptions);
+                        await http.Response.WriteAsync($"data: {contentJson}\n\n", http.RequestAborted);
+                        await http.Response.Body.FlushAsync(http.RequestAborted);
+
+                        // 2) Artifact-only event (no content)
+                        evt.Content = null;
+                        evt.Actions.ArtifactDelta = savedDelta;
+                        var artifactJson = JsonSerializer.Serialize(evt, s_jsonOptions);
+                        await http.Response.WriteAsync($"data: {artifactJson}\n\n", http.RequestAborted);
+                        await http.Response.Body.FlushAsync(http.RequestAborted);
+                    }
+                    else
+                    {
+                        var json = JsonSerializer.Serialize(evt, s_jsonOptions);
+                        await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
+                        await http.Response.Body.FlushAsync(http.RequestAborted);
+                    }
                 }
             }
             catch (OperationCanceledException) { /* client disconnected */ }
@@ -174,6 +194,12 @@ public static class AdkApiEndpoints
                     await http.Response.WriteAsync(errorJson, http.RequestAborted);
                 }
             }
+        });
+
+        // ── Builder App (stub for Python ADK UI compatibility) ──────────
+        app.MapGet("/builder/app/{appName}", (string appName) =>
+        {
+            return Results.Text("", "application/x-yaml");
         });
 
         // ── Agent Graph ────────────────────────────────────────────────────
