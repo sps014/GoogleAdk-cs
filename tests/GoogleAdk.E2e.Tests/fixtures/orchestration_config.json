@@ -1,0 +1,22 @@
+{
+  "pipelineName": "research_pipeline",
+  "a2aEnabled": false,
+  "userPrompt": "Generate a short report about electric vehicles.",
+  "agents": [
+    {
+      "name": "researcher",
+      "description": "Collects facts and bullet points about the topic.",
+      "output": "Research result: EV adoption is rising, battery costs are declining, and charging networks are expanding."
+    },
+    {
+      "name": "analyst",
+      "description": "Interprets the research and extracts insights.",
+      "output": "Analysis result: Market growth correlates with infrastructure investment; cost reductions drive broader adoption."
+    },
+    {
+      "name": "writer",
+      "description": "Produces the final report from research and analysis.",
+      "output": "Final report: EVs are accelerating due to lower costs and improved infrastructure; policy and investment remain key."
+    }
+  ]
+}

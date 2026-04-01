@@ -28,6 +28,7 @@ using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
+using GoogleAdk.Dev;
 using GoogleAdk.Models.Gemini;
 
 var model = GeminiModelFactory.Create("gemini-2.5-flash");
@@ -89,6 +90,16 @@ var receptionist = new LlmAgent(new LlmAgentConfig
 });
 
 var runner = new InMemoryRunner("sub-agent-transfer-sample", receptionist);
+
+
+var runWeb = args.Contains("--web");
+var enableA2a = args.Contains("--a2a");
+if (runWeb)
+{
+    AdkWeb.Root = receptionist;
+    await AdkWeb.RunAsync(enableA2a: enableA2a);
+    return;
+}
 
 // Create a persistent session so conversation history is preserved across turns
 var session = await runner.SessionService.CreateSessionAsync(

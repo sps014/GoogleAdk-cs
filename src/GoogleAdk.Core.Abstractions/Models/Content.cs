@@ -22,8 +22,17 @@ public class Part
     [JsonPropertyName("inlineData")]
     public InlineData? InlineData { get; set; }
 
+    [JsonPropertyName("fileData")]
+    public FileData? FileData { get; set; }
+
     [JsonPropertyName("codeExecutionResult")]
     public CodeExecutionResult? CodeExecutionResult { get; set; }
+
+    [JsonPropertyName("executableCode")]
+    public ExecutableCode? ExecutableCode { get; set; }
+
+    [JsonPropertyName("thought")]
+    public bool? Thought { get; set; }
 }
 
 /// <summary>
@@ -66,6 +75,33 @@ public class InlineData
 
     [JsonPropertyName("data")]
     public string Data { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// File reference data (URI-based).
+/// </summary>
+public class FileData
+{
+    [JsonPropertyName("fileUri")]
+    public string? FileUri { get; set; }
+
+    [JsonPropertyName("mimeType")]
+    public string? MimeType { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
+
+/// <summary>
+/// Executable code content.
+/// </summary>
+public class ExecutableCode
+{
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
 }
 
 /// <summary>

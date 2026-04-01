@@ -41,11 +41,18 @@ public static class WebCommand
             DefaultValueFactory = _ => "*",
         };
 
+        var a2aOption = new Option<bool>("--a2a")
+        {
+            Description = "Enable A2A protocol endpoints.",
+            DefaultValueFactory = _ => false,
+        };
+
         var command = new Command("web", "Start the ADK dev server with UI.");
         command.Arguments.Add(agentsDirArg);
         command.Options.Add(portOption);
         command.Options.Add(hostOption);
         command.Options.Add(originsOption);
+        command.Options.Add(a2aOption);
 
         command.SetAction(async parseResult =>
         {
@@ -53,14 +60,15 @@ public static class WebCommand
             var port = parseResult.GetValue(portOption);
             var host = parseResult.GetValue(hostOption);
             var origins = parseResult.GetValue(originsOption);
-            await StartServer(agentsDir!, port, host!, origins!, serveUi: true);
+            var a2a = parseResult.GetValue(a2aOption);
+            await StartServer(agentsDir!, port, host!, origins!, serveUi: true, enableA2a: a2a);
         });
 
         return command;
     }
 
     internal static async Task StartServer(
-        string agentsDir, int port, string host, string origins, bool serveUi)
+        string agentsDir, int port, string host, string origins, bool serveUi, bool enableA2a = false)
     {
         var builder = WebApplication.CreateBuilder();
 
@@ -92,6 +100,8 @@ public static class WebCommand
 
         // Map API endpoints
         app.MapAdkApi();
+        if (enableA2a)
+            app.MapA2aApi();
 
         // Serve dev UI
         if (serveUi)
@@ -126,6 +136,8 @@ public static class WebCommand
         if (serveUi)
             Console.WriteLine($"║  Dev UI:     {url + "/dev-ui",-39}║");
         Console.WriteLine($"║  API:        {url + "/list-apps",-39}║");
+        if (enableA2a)
+            Console.WriteLine($"║  A2A:        {url + "/a2a/{app}/",-39}║");
         Console.WriteLine($"║  Agents dir: {agentsDir,-39}║");
         Console.WriteLine("╠══════════════════════════════════════════════════════╣");
 

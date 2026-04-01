@@ -26,5 +26,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GoogleAdk.Core.Tests/GoogleAdk.Core.Tests.csproj" />
+    <Project Path="tests/GoogleAdk.E2e.Tests/GoogleAdk.E2e.Tests.csproj" />
   </Folder>
 </Solution>
