@@ -13,60 +13,73 @@ namespace GoogleAdk.Samples.ArtifactsWeb;
 public static partial class ArtifactsWebTools
 {
     /// <summary>
-    /// Reads a PDF artifact and generates a TXT artifact containing its text content.
+    /// Reads the text content of a file from the artifact store.
     /// </summary>
-    /// <param name="inputName">Name of the PDF file to read (e.g., invoice.pdf)</param>
-    /// <param name="outputName">Name of the output TXT file to generate (e.g., invoice.txt)</param>
+    /// <param name="fileName">Name of the file to read (e.g., input.txt)</param>
     /// <param name="context">The agent context injected by the runtime</param>
     [FunctionTool]
-    public static async Task<object?> ConvertPdfToTxt(string inputName, string outputName, AgentContext context)
+    public static async Task<object?> ReadTextFile(string fileName, AgentContext context)
     {
-        if (string.IsNullOrWhiteSpace(inputName) || string.IsNullOrWhiteSpace(outputName))
+        try
         {
-            return "Error: input_name and output_name are required.";
+            var loadedPart = await context.LoadArtifactAsync(fileName);
+            var text = loadedPart?.Text;
+
+            if (loadedPart?.InlineData != null)
+            {
+                var dataBytes = Convert.FromBase64String(loadedPart.InlineData.Data);
+                text = Encoding.UTF8.GetString(dataBytes);
+            }
+            else if (loadedPart?.FileData != null)
+            {
+                text = $"[File Data attached from {loadedPart.FileData.FileUri}]";
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return $"Error: Artifact '{fileName}' not found or is empty.";
+            }
+
+            return text;
         }
-        
-        var artifactService = context.InvocationContext.ArtifactService;
-        if (artifactService == null)
+        catch (Exception ex)
         {
-            return "Error: No artifact service configured in the runner.";
+            return $"Error: {ex.Message}";
         }
+    }
 
-        var appName = context.InvocationContext.Session?.AppName ?? "default";
-        var userId = context.InvocationContext.Session?.UserId ?? "default";
-        var sessionId = context.InvocationContext.Session?.Id ?? "default";
-
-        var loadReq = new LoadArtifactRequest 
-        { 
-            AppName = appName,
-            UserId = userId,
-            SessionId = sessionId,
-            Filename = inputName 
-        };
-
-        var loadedPart = await artifactService.LoadArtifactAsync(loadReq);
-        if (loadedPart == null)
+    /// <summary>
+    /// Writes text content to a new file in the artifact store.
+    /// </summary>
+    /// <param name="fileName">Name of the file to write (e.g., summary.txt)</param>
+    /// <param name="content">The text content to save</param>
+    /// <param name="context">The agent context injected by the runtime</param>
+    [FunctionTool]
+    public static async Task<object?> WriteTextFile(string fileName, string content, AgentContext context)
+    {
+        try
         {
-            return $"Error: Could not load artifact {inputName}.";
+            var dataBytes = Encoding.UTF8.GetBytes(content);
+            var base64Data = Convert.ToBase64String(dataBytes);
+
+            var part = new Part 
+            { 
+                InlineData = new InlineData 
+                { 
+                    Data = base64Data, 
+                    MimeType = "text/plain",
+                    DisplayName = fileName
+                } 
+            };
+
+            await context.SaveArtifactAsync(fileName, part);
+            
+            return $"Successfully wrote {content.Length} characters to {fileName}.";
         }
-        
-        var pdfLength = loadedPart.InlineData?.Data?.Length ?? loadedPart.Text?.Length ?? 0;
-        
-        // Simulating PDF reading logic
-        var extractedText = $"Extracted text from {inputName} (Estimated Size: {pdfLength} units).";
-        
-        var saveReq = new SaveArtifactRequest
+        catch (Exception ex)
         {
-            AppName = appName,
-            UserId = userId,
-            SessionId = sessionId,
-            Filename = outputName,
-            Artifact = new Part { Text = extractedText }
-        };
-
-        await artifactService.SaveArtifactAsync(saveReq);
-        
-        return $"Successfully read {inputName} and generated {outputName}.";
+            return $"Error: {ex.Message}";
+        }
     }
 }
 
@@ -80,17 +93,19 @@ public class Program
     /// </summary>
     public static async Task Main(string[] args)
     {
-        Console.WriteLine("==> Demo: Artifacts Web Sample\n");
+        Console.WriteLine("==> Demo: Artifacts Web Sample (Summarization)\n");
 
         var agent = new LlmAgent(new LlmAgentConfig
         {
             Name = "artifact_web_agent",
             ModelName = "gemini-2.5-flash",
-            Instruction = "You are an assistant that converts PDF artifacts to TXT artifacts. Use the tool provided. When a user asks you to read a pdf, execute the tool to convert it to a txt, then let the user know what was generated.",
-            Tools = [ArtifactsWebTools.ConvertPdfToTxtTool]
+            Instruction = "You are a summarization assistant. When asked to summarize, use the ReadTextFile tool to read a file (use 'input.txt' as a default if none is provided), summarize its contents concisely, and use the WriteTextFile tool to save the summary to a new file. You can choose the output filename yourself without asking the user.",
+            Tools = [
+                ArtifactsWebTools.ReadTextFileTool,
+                ArtifactsWebTools.WriteTextFileTool
+            ]
         });
 
-        AdkWeb.Root = agent;
-        await AdkWeb.RunAsync();
+        await AdkWeb.RunAsync(agent);
     }
 }

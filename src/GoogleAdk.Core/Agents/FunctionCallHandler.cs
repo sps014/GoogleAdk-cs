@@ -170,6 +170,11 @@ public static class FunctionCallHandler
             else if (functionResponse == null)
                 functionResponse = new Dictionary<string, object?> { ["result"] = null };
 
+            // Keep artifact delta on the function response event (matching Python ADK behavior).
+            // The ADK Web UI only calls renderArtifact from storeMessage, which is reached
+            // for functionResponse parts but NOT for text parts. Stashing in PendingArtifactDelta
+            // would place the delta on the next model text event where the UI ignores it.
+
             var responseEvent = BuildFunctionResponseEvent(
                 invocationContext, functionCall, functionResponse, toolContext.EventActions);
 

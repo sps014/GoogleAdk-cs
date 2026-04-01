@@ -44,6 +44,9 @@ public class InvocationContext
     /// <summary>Plugin manager for this invocation.</summary>
     public PluginManager? PluginManager { get; set; }
 
+    /// <summary>Pending artifact delta to be emitted on the first agent event.</summary>
+    public Dictionary<string, int>? PendingArtifactDelta { get; set; }
+
     private int _llmCallCount;
 
     public InvocationContext() { }
@@ -65,6 +68,7 @@ public class InvocationContext
         EndInvocation = parent.EndInvocation;
         RunConfig = parent.RunConfig;
         PluginManager = parent.PluginManager;
+        PendingArtifactDelta = parent.PendingArtifactDelta;
     }
 
     public string AppName => Session.AppName;

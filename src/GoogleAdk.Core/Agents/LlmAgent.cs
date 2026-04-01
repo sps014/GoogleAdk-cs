@@ -355,6 +355,11 @@ public class LlmAgent : BaseAgent
             e.InvocationId = invocationContext.InvocationId;
             e.Author = Name;
             e.Branch = invocationContext.Branch;
+            if (invocationContext.PendingArtifactDelta != null)
+            {
+                e.Actions = EventActions.Create(a => a.ArtifactDelta = invocationContext.PendingArtifactDelta);
+                invocationContext.PendingArtifactDelta = null;
+            }
         });
 
         await foreach (var llmResponse in CallLlmAsync(invocationContext, llmRequest, modelResponseEvent, cancellationToken))

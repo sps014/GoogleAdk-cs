@@ -4,45 +4,41 @@ using GoogleAdk.Core.Sessions;
 using GoogleAdk.Dev.Server;
 using Microsoft.Extensions.FileProviders;
 using System.Diagnostics;
+using GoogleAdk.Core.Abstractions.Artifacts;
+using GoogleAdk.Core.Artifacts;
 
 namespace GoogleAdk.Dev;
 
 /// <summary>
 /// Simple static entry point for hosting an agent in the ADK dev server.
 /// <code>
-/// AdkWeb.Root = myAgent;
-/// await AdkWeb.RunAsync();
+/// await AdkWeb.RunAsync(myAgent);
 /// </code>
 /// </summary>
 public static class AdkWeb
 {
-    private static BaseAgent? _root;
-
     /// <summary>
-    /// The root agent to serve. Must be set before calling <see cref="RunAsync"/>.
+    /// Starts the ADK dev server with the UI, serving the specified root agent.
     /// </summary>
-    public static BaseAgent Root
+    public static async Task RunAsync(
+        BaseAgent rootAgent,
+        IBaseArtifactService? artifactService = null,
+        int port = 8080, 
+        string host = "localhost", 
+        bool serveUi = true, 
+        bool enableA2a = false)
     {
-        get => _root ?? throw new InvalidOperationException("AdkWeb.Root has not been set. Assign your root agent before calling RunAsync().");
-        set => _root = value;
-    }
-
-    /// <summary>
-    /// Starts the ADK dev server with the UI, serving <see cref="Root"/>.
-    /// </summary>
-    public static async Task RunAsync(int port = 8080, string host = "localhost", bool serveUi = true, bool enableA2a = false)
-    {
-        var agent = Root; // will throw if not set
         var agentLoader = new AgentLoader(".");
-        agentLoader.Register(agent.Name, agent);
+        agentLoader.Register(rootAgent.Name, rootAgent);
 
         var sessionService = new InMemorySessionService();
+        artifactService ??= new InMemoryArtifactService();
 
         var builder = WebApplication.CreateBuilder();
 
         builder.Services.AddSingleton(agentLoader);
         builder.Services.AddSingleton<BaseSessionService>(sessionService);
-        builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService));
+        builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService, artifactService));
         builder.Services.AddSingleton(new InMemoryTraceCollector());
 
         builder.Services.AddCors(options =>
@@ -82,9 +78,9 @@ public static class AdkWeb
         Console.WriteLine();
         Console.WriteLine($"  ADK Dev Server running at {url}");
         Console.WriteLine($"  Dev UI: {url}/dev-ui");
-        Console.WriteLine($"  Agent: {agent.Name}");
+        Console.WriteLine($"  Agent: {rootAgent.Name}");
         if (enableA2a)
-            Console.WriteLine($"  A2A: {url}/a2a/{agent.Name}/");
+            Console.WriteLine($"  A2A: {url}/a2a/{rootAgent.Name}/");
         Console.WriteLine($"  Press Ctrl+C to stop.");
         Console.WriteLine();
 

@@ -72,6 +72,9 @@ public class InlineData
 
     [JsonPropertyName("data")]
     public string Data { get; set; } = string.Empty;
+
+    [JsonPropertyName("displayName")]
+    public string? DisplayName { get; set; }
 }
 
 /// <summary>

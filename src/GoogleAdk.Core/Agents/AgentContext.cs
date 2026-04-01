@@ -42,4 +42,46 @@ public class AgentContext
         var authHandler = new AuthHandler(authConfig);
         return authHandler.GetAuthResponse(State);
     }
+
+    /// <summary>
+    /// Convenience method to save an artifact and automatically update the artifact delta.
+    /// </summary>
+    public async Task<int> SaveArtifactAsync(string fileName, GoogleAdk.Core.Abstractions.Models.Part artifact)
+    {
+        if (InvocationContext.ArtifactService == null)
+            throw new InvalidOperationException("ArtifactService is not configured.");
+
+        var req = new GoogleAdk.Core.Abstractions.Artifacts.SaveArtifactRequest
+        {
+            AppName = AppName,
+            UserId = UserId,
+            SessionId = Session.Id,
+            Filename = fileName,
+            Artifact = artifact
+        };
+
+        var version = await InvocationContext.ArtifactService.SaveArtifactAsync(req);
+        EventActions.ArtifactDelta[fileName] = version;
+        return version;
+    }
+
+    /// <summary>
+    /// Convenience method to load an artifact.
+    /// </summary>
+    public async Task<GoogleAdk.Core.Abstractions.Models.Part?> LoadArtifactAsync(string fileName, int? version = null)
+    {
+        if (InvocationContext.ArtifactService == null)
+            throw new InvalidOperationException("ArtifactService is not configured.");
+
+        var req = new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+        {
+            AppName = AppName,
+            UserId = UserId,
+            SessionId = Session.Id,
+            Filename = fileName,
+            Version = version
+        };
+
+        return await InvocationContext.ArtifactService.LoadArtifactAsync(req);
+    }
 }

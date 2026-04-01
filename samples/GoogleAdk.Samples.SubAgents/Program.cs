@@ -93,8 +93,7 @@ var runWeb = args.Contains("--web");
 var enableA2a = args.Contains("--a2a");
 if (runWeb)
 {
-    AdkWeb.Root = receptionist;
-    await AdkWeb.RunAsync(enableA2a: enableA2a);
+    await AdkWeb.RunAsync(receptionist, enableA2a: enableA2a);
     return;
 }
 

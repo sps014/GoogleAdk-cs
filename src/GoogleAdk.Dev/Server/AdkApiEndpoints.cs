@@ -98,9 +98,13 @@ public static class AdkApiEndpoints
                 var message = req.ResolveMessage();
                 var events = new List<Event>();
 
+                var runConfig = req.RunConfig ?? new GoogleAdk.Core.Agents.RunConfig();
+                runConfig.SaveInputBlobsAsArtifacts = req.RunConfig?.SaveInputBlobsAsArtifacts ?? true;
+
                 await foreach (var evt in runner.RunAsync(
                     req.UserId, req.SessionId, message,
                     stateDelta: req.StateDelta,
+                    runConfig: runConfig,
                     cancellationToken: http.RequestAborted))
                 {
                     events.Add(evt);
@@ -131,12 +135,12 @@ public static class AdkApiEndpoints
                 await http.Response.Body.FlushAsync(http.RequestAborted);
                 headersSent = true;
 
-                var runConfig = new GoogleAdk.Core.Agents.RunConfig
-                {
-                    StreamingMode = req.Streaming
+                var runConfig = req.RunConfig ?? new GoogleAdk.Core.Agents.RunConfig();
+                // Dev Server UI relies on parsing inline data attachments into artifacts.
+                runConfig.SaveInputBlobsAsArtifacts = req.RunConfig?.SaveInputBlobsAsArtifacts ?? true;
+                runConfig.StreamingMode = req.Streaming
                         ? GoogleAdk.Core.Agents.StreamingMode.Sse
-                        : GoogleAdk.Core.Agents.StreamingMode.None,
-                };
+                        : GoogleAdk.Core.Agents.StreamingMode.None;
 
                 await foreach (var evt in runner.RunAsync(
                     req.UserId, req.SessionId, message,
@@ -144,6 +148,9 @@ public static class AdkApiEndpoints
                     runConfig: runConfig,
                     cancellationToken: http.RequestAborted))
                 {
+                    // Send events as-is without splitting. The ADK Web UI processes
+                    // artifactDelta only on events that have content (via storeMessage),
+                    // so content-less artifact-only events would be silently ignored.
                     var json = JsonSerializer.Serialize(evt, s_jsonOptions);
                     await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
                     await http.Response.Body.FlushAsync(http.RequestAborted);
@@ -268,6 +275,124 @@ public static class AdkApiEndpoints
 
         app.MapGet("/apps/{appName}/eval_metrics",
             (string appName) => Results.StatusCode(501));
+
+        // ── Artifacts ──────────────────────────────────────────────────────
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}",
+            async (string appName, string userId, string sessionId, string artifactName, int versionId, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                var part = await mgr.ArtifactService.LoadArtifactAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = artifactName,
+                    Version = versionId
+                });
+
+                if (part == null) return Results.NotFound();
+
+                // The UI expects InlineData or FileData. If it's just Text, wrap it in InlineData.
+                if (part.InlineData == null && part.FileData == null && part.Text != null)
+                {
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(part.Text);
+                    part = new GoogleAdk.Core.Abstractions.Models.Part
+                    {
+                        InlineData = new GoogleAdk.Core.Abstractions.Models.InlineData
+                        {
+                            Data = Convert.ToBase64String(bytes),
+                            MimeType = "text/plain",
+                            DisplayName = artifactName
+                        }
+                    };
+                }
+
+                return Results.Json(part, s_jsonOptions);
+            });
+
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}/metadata",
+            async (string appName, string userId, string sessionId, string artifactName, int versionId, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                var metadata = await mgr.ArtifactService.GetArtifactVersionAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = artifactName,
+                    Version = versionId
+                });
+
+                if (metadata == null) return Results.NotFound();
+                return Results.Json(metadata, s_jsonOptions);
+            });
+
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/metadata",
+            async (string appName, string userId, string sessionId, string artifactName, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                var metadata = await mgr.ArtifactService.GetArtifactVersionAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = artifactName,
+                    Version = null
+                });
+
+                if (metadata == null) return Results.NotFound();
+                return Results.Json(metadata, s_jsonOptions);
+            });
+
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions",
+            async (string appName, string userId, string sessionId, string artifactName, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                var versions = await mgr.ArtifactService.ListVersionsAsync(new GoogleAdk.Core.Abstractions.Artifacts.ListVersionsRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = artifactName
+                });
+
+                return Results.Json(versions, s_jsonOptions);
+            });
+
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts",
+            async (string appName, string userId, string sessionId, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                var filenames = await mgr.ArtifactService.ListArtifactKeysAsync(new GoogleAdk.Core.Abstractions.Artifacts.ListArtifactKeysRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId
+                });
+
+                return Results.Json(filenames, s_jsonOptions);
+            });
+
+        app.MapDelete("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}",
+            async (string appName, string userId, string sessionId, string artifactName, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.NotFound();
+
+                await mgr.ArtifactService.DeleteArtifactAsync(new GoogleAdk.Core.Abstractions.Artifacts.DeleteArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = artifactName
+                });
+
+                return Results.Ok();
+            });
 
         return app;
     }

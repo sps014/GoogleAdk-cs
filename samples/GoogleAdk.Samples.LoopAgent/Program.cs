@@ -65,8 +65,7 @@ var refinementLoop = new LoopAgent(new LoopAgentConfig
 
 if(args.Contains("--web"))
 {
-    AdkWeb.Root = refinementLoop;
-    await AdkWeb.RunAsync();
+    await AdkWeb.RunAsync(refinementLoop);
     return;
 }
 

@@ -33,8 +33,7 @@ Console.WriteLine($"DataStore ID: {vertexSearchTool.DataStoreId}\n");
 
 if(args.Contains("--web"))
 {
-    AdkWeb.Root = agent;
-    await AdkWeb.RunAsync();
+    await AdkWeb.RunAsync(agent);
     return;
 }
 

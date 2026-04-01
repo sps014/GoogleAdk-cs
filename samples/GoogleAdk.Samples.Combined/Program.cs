@@ -100,8 +100,7 @@ var rootAgent = new SequentialAgent(new BaseAgentConfig
 // ── Web mode: "dotnet run -- --web" launches the ADK dev UI ────────────────
 if (args.Contains("--web"))
 {
-    AdkWeb.Root = rootAgent;
-    await AdkWeb.RunAsync();
+    await AdkWeb.RunAsync(rootAgent);
     return;
 }
 

@@ -32,6 +32,9 @@ public class RunAgentRequest
     [JsonPropertyName("stateDelta")]
     public Dictionary<string, object?>? StateDelta { get; set; }
 
+    [JsonPropertyName("runConfig")]
+    public GoogleAdk.Core.Agents.RunConfig? RunConfig { get; set; }
+
     /// <summary>Resolves the user message, preferring NewMessage over Message.</summary>
     public Content ResolveMessage() =>
         NewMessage ?? new Content

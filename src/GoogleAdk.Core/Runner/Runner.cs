@@ -127,13 +127,24 @@ public class Runner
         // Append user message to session
         if (newMessage.Parts != null && newMessage.Parts.Count > 0)
         {
+            Dictionary<string, int>? artifactDelta = null;
+            if (runConfig.SaveInputBlobsAsArtifacts)
+            {
+                artifactDelta = await SaveArtifactsAsync(invocationContext.InvocationId, userId, session.Id, newMessage);
+            }
+
             var userEvent = Event.Create(e =>
             {
                 e.InvocationId = invocationContext.InvocationId;
                 e.Author = "user";
                 e.Content = newMessage;
                 if (stateDelta != null)
-                    e.Actions = EventActions.Create(a => a.StateDelta = stateDelta);
+                {
+                    e.Actions = EventActions.Create(a => 
+                    {
+                        a.StateDelta = stateDelta;
+                    });
+                }
             });
 
             await SessionService.AppendEventAsync(new AppendEventRequest
@@ -141,6 +152,17 @@ public class Runner
                 Session = session,
                 Event = userEvent,
             });
+
+            // Pass the user's uploaded artifact delta to PendingArtifactDelta so that
+            // the ADK Web UI receives it on the first model response event (matching
+            // the Python ADK SaveFilesAsArtifactsPlugin.before_agent_callback behaviour).
+            if (artifactDelta != null)
+            {
+                invocationContext.PendingArtifactDelta ??= new Dictionary<string, int>();
+                foreach (var kvp in artifactDelta)
+                    invocationContext.PendingArtifactDelta[kvp.Key] = kvp.Value;
+            }
+
         }
 
         // Determine which agent should handle this (for session resumption)
@@ -230,6 +252,63 @@ public class Runner
         }
 
         return rootAgent;
+    }
+
+    private async Task<Dictionary<string, int>?> SaveArtifactsAsync(
+        string invocationId,
+        string userId,
+        string sessionId,
+        Content message)
+    {
+        if (ArtifactService == null || message.Parts == null || message.Parts.Count == 0)
+            return null;
+
+        var delta = new Dictionary<string, int>();
+
+        for (int i = 0; i < message.Parts.Count; i++)
+        {
+            var part = message.Parts[i];
+            if (part.InlineData == null)
+                continue;
+
+            var fileName = part.InlineData.DisplayName;
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                var mimeType = part.InlineData.MimeType ?? "application/octet-stream";
+                var extension = mimeType switch
+                {
+                    "text/plain" => ".txt",
+                    "text/html" => ".html",
+                    "application/json" => ".json",
+                    "application/xml" => ".xml",
+                    "image/png" => ".png",
+                    "image/jpeg" => ".jpeg",
+                    "image/gif" => ".gif",
+                    "application/pdf" => ".pdf",
+                    "application/msword" => ".doc",
+                    _ => ""
+                };
+                fileName = $"artifact_{invocationId}_{i}{extension}";
+            }
+
+            var version = await ArtifactService.SaveArtifactAsync(new SaveArtifactRequest
+            {
+                AppName = AppName,
+                UserId = userId,
+                SessionId = sessionId,
+                Filename = fileName,
+                Artifact = part,
+            });
+
+            delta[fileName] = version;
+
+            message.Parts[i] = new Part
+            {
+                Text = $"Uploaded file: {fileName}. It is saved into artifacts"
+            };
+        }
+
+        return delta.Count > 0 ? delta : null;
     }
 
     private static bool IsRoutableLlmAgent(BaseAgent? agent)

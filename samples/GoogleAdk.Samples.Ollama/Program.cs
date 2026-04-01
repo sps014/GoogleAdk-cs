@@ -27,8 +27,7 @@ var agent = new LlmAgent(new LlmAgentConfig
 
 if (args.Contains("--web"))
 {
-    AdkWeb.Root = agent;
-    await AdkWeb.RunAsync();
+    await AdkWeb.RunAsync(agent);
     return;
 }
 
