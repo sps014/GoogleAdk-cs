@@ -144,7 +144,13 @@ while (true)
     Console.WriteLine();
     var sw = System.Diagnostics.Stopwatch.StartNew();
 
-    await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
+    // Use SSE streaming mode for real-time partial responses
+    var runConfig = new GoogleAdk.Core.Agents.RunConfig
+    {
+        StreamingMode = GoogleAdk.Core.Agents.StreamingMode.Sse,
+    };
+
+    await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage, runConfig: runConfig))
     {
         var text = evt.Content?.Parts?.FirstOrDefault()?.Text;
 
@@ -152,21 +158,27 @@ while (true)
         var calls = evt.GetFunctionCalls();
         foreach (var call in calls)
         {
-            Console.WriteLine($"  ⚡ [{evt.Author}] tool: {call.Name}");
+            var partialTag = evt.Partial == true ? " (partial)" : "";
+            Console.WriteLine($"  ⚡ [{evt.Author}] tool: {call.Name}{partialTag}");
         }
 
         // Show agent responses
-        if (text != null && evt.Partial != true)
+        if (text != null)
         {
-            if (evt.Author == "word_analyzer")
+            if (evt.Partial == true)
             {
-                Console.WriteLine($"[{evt.Author}]:");
+                // Streaming partial: show inline progress
+                Console.Write($"\r  [{evt.Author}] streaming...");
+            }
+            else if (evt.Author == "word_analyzer")
+            {
+                Console.WriteLine($"\n[{evt.Author}]:");
                 Console.WriteLine(text);
                 Console.WriteLine();
             }
             else
             {
-                Console.WriteLine($"  [{evt.Author}] ✓ completed");
+                Console.WriteLine($"\n  [{evt.Author}] ✓ completed");
             }
         }
     }

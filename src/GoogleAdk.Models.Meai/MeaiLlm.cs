@@ -38,7 +38,7 @@ public class MeaiLlm : BaseLlm
         if (stream)
         {
             var textBuffer = string.Empty;
-            var parts = new List<Part>();
+            var fcParts = new List<Part>();
             object? lastRaw = null;
 
             await foreach (var update in _chatClient.GetStreamingResponseAsync(
@@ -61,7 +61,11 @@ public class MeaiLlm : BaseLlm
                     };
                 }
 
-                // Check for tool calls in the streaming update
+                // Check for tool calls in the streaming update.
+                // Streaming FC chunks are marked Partial = true to prevent
+                // premature tool execution. Only the final aggregated response
+                // (yielded after the stream) triggers execution.
+                // This mirrors the Python StreamingResponseAggregator behavior.
                 if (update.Contents != null)
                 {
                     foreach (var content in update.Contents)
@@ -77,7 +81,7 @@ public class MeaiLlm : BaseLlm
                                     Id = functionCall.CallId,
                                 }
                             };
-                            parts.Add(fcPart);
+                            fcParts.Add(fcPart);
                             yield return new LlmResponse
                             {
                                 Content = new Content
@@ -85,7 +89,7 @@ public class MeaiLlm : BaseLlm
                                     Role = "model",
                                     Parts = new List<Part> { fcPart }
                                 },
-                                TurnComplete = true,
+                                Partial = true,
                                 RawRepresentation = update.RawRepresentation,
                             };
                         }
@@ -93,27 +97,25 @@ public class MeaiLlm : BaseLlm
                 }
             }
 
-            // Yield a final response with the full text and metadata
-            if (parts.Count == 0 && textBuffer.Length > 0)
-            {
-                parts.Add(new Part { Text = textBuffer });
-            }
+            // Build the final aggregated response with all accumulated parts.
+            // Text and FC parts are combined so nothing is lost.
+            var finalParts = new List<Part>();
+            if (textBuffer.Length > 0)
+                finalParts.Add(new Part { Text = textBuffer });
+            finalParts.AddRange(fcParts);
 
-            // Always yield a final event if the stream produced any parts or if there's raw representation
-            if (parts.Count > 0 || lastRaw != null)
+            if (finalParts.Count > 0 || lastRaw != null)
             {
-                var finalResponse = new LlmResponse
+                yield return new LlmResponse
                 {
                     Content = new Content
                     {
                         Role = "model",
-                        Parts = parts
+                        Parts = finalParts.Count > 0 ? finalParts : new List<Part>()
                     },
                     TurnComplete = true,
                     RawRepresentation = lastRaw,
                 };
-                
-                yield return finalResponse;
             }
         }
         else

@@ -343,8 +343,6 @@ public class LlmAgent : BaseAgent
 
             if (lastEvent == null || lastEvent.IsFinalResponse())
                 break;
-            if (lastEvent.Partial == true)
-                break;
         }
     }
 
