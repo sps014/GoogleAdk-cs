@@ -9,6 +9,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Pack the source generator DLL into the NuGet package so consumers automatically get the analyzer -->
+    <None Include="..\GoogleAdk.SourceGenerators\bin\$(Configuration)\netstandard2.0\GoogleAdk.SourceGenerators.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs" 
+          Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.14.0" />
   </ItemGroup>
 
