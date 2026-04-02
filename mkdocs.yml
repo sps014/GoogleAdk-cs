@@ -1,25 +1,70 @@
-site_name: ADK for .NET
-site_url: https://example.com/adk-dotnet
-nav:
-  - Home: docs/index.md
-  - Getting Started: docs/getting-started.md
-  - Running Agents: docs/running-agents.md
-  - Features: docs/features.md
-  - Tools: docs/tools.md
-  - Orchestration: docs/orchestration.md
-  - Streaming: docs/streaming.md
-  - MCP: docs/mcp.md
-  - A2A: docs/a2a.md
-  - Code Execution: docs/code-execution.md
-  - Planning: docs/planning.md
-  - Human in the Loop: docs/human-in-the-loop.md
-  - Output Schema: docs/output-schema.md
-  - Prompt Caching: docs/caching.md
-  - Artifacts: docs/artifacts.md
-  - Plugins: docs/plugins.md
-  - Evaluation & Optimization: docs/evaluation-optimization.md
-  - Feature Flags: docs/feature-flags.md
-  - Models: docs/models.md
-  - Testing: docs/testing.md
+site_name: Google ADK for .NET
+site_url: https://sps014.github.io/GoogleAdk-cs/
+repo_url: https://github.com/sps014/GoogleAdk-cs
+repo_name: sps014/GoogleAdk-cs
+
 theme:
   name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Core Features:
+    - Features Overview: features.md
+    - Running Agents: running-agents.md
+    - Orchestration: orchestration.md
+    - Planning: planning.md
+    - Caching: caching.md
+    - Streaming: streaming.md
+  - Tools & Integrations:
+    - Tools Overview: tools.md
+    - Human in the Loop: human-in-the-loop.md
+    - Code Execution: code-execution.md
+    - Model Context Protocol (MCP): mcp.md
+    - Artifacts: artifacts.md
+  - Models & Connectivity:
+    - Models: models.md
+    - Agent-to-Agent (A2A): a2a.md
+    - Output Schema: output-schema.md
+  - Advanced Topics:
+    - Evaluation & Optimization: evaluation-optimization.md
+    - Plugins: plugins.md
+    - Testing: testing.md
+    - Feature Flags: feature-flags.md
