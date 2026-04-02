@@ -32,7 +32,10 @@ Here is a complete, runnable console application that creates a basic conversati
    dotnet new console -n QuickstartAgent
    cd QuickstartAgent
    ```
-2. Add the ADK core package reference (or build the ADK from source).
+2. Add the ADK package:
+   ```bash
+   dotnet add package GoogleAdk --prerelease
+   ```
 3. Paste the following into `Program.cs`:
 
 ```csharp

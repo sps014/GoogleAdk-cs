@@ -72,7 +72,11 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 
 ## 🚀 Installation
 
-This repo is currently built from source. Package publishing is coming soon.
+Install the preview package via NuGet:
+
+```bash
+dotnet add package GoogleAdk --prerelease
+```
 
 ## 📚 Documentation
 

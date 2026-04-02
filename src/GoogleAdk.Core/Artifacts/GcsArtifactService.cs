@@ -36,13 +36,20 @@ public sealed class GcsArtifactService : IBaseArtifactService
 		{
 			throw new ArgumentException("Artifact must have either InlineData or Text content.");
 		}
+		
+		// Build the GCS key prefix for this specific artifact
 		string prefix = GetArtifactPrefix(request.AppName, request.UserId, request.SessionId, request.Filename);
 		List<int> versions = await ListVersionsInternalAsync(prefix);
+		
+		// Next version is sequentially incremented
 		int nextVersion = versions.Count > 0 ? versions[versions.Count - 1] + 1 : 0;
 
+		// The full GCS object name combines the prefix and the version number
 		string objectName = $"{prefix}{nextVersion}";
 		string contentType = "text/plain";
 		byte[] data;
+		
+		// Prepare the payload bytes for upload
 		if (request.Artifact.InlineData != null)
 		{
 			data = Convert.FromBase64String(request.Artifact.InlineData.Data ?? string.Empty);
@@ -52,9 +59,12 @@ public sealed class GcsArtifactService : IBaseArtifactService
 		{
 			data = Encoding.UTF8.GetBytes(request.Artifact.Text ?? string.Empty);
 		}
+		
+		// Upload the main object data
 		using MemoryStream stream = new MemoryStream(data);
 		Google.Apis.Storage.v1.Data.Object obj = await _client.UploadObjectAsync(_bucket, objectName, contentType, stream);
 		
+		// If custom metadata was provided, attach it to the GCS object via an update call
 		if (request.CustomMetadata != null && request.CustomMetadata.Count > 0)
 		{
 			obj.Metadata = request.CustomMetadata.ToDictionary(k => k.Key, v => v.Value?.ToString() ?? string.Empty);
@@ -74,9 +84,12 @@ public sealed class GcsArtifactService : IBaseArtifactService
 		Google.Apis.Storage.v1.Data.Object? obj = await SafeGetObjectAsync(objectName);
 		if (obj == null) return null;
 
+		// Download the raw object bytes
 		using MemoryStream stream = new MemoryStream();
 		await _client.DownloadObjectAsync(obj, stream);
 		byte[] bytes = stream.ToArray();
+		
+		// Reconstruct as InlineData (binary) or pure Text depending on the GCS content type
 		if (!string.IsNullOrEmpty(obj.ContentType) && !obj.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
 		{
 			return new Part
@@ -98,6 +111,8 @@ public sealed class GcsArtifactService : IBaseArtifactService
 	public async Task<List<string>> ListArtifactKeysAsync(ListArtifactKeysRequest request)
 	{
 		HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
+		
+		// Fetch session-specific artifact prefixes
 		string sessionPrefix = $"{request.AppName}/{request.UserId}/{request.SessionId}/";
 		foreach (Google.Apis.Storage.v1.Data.Object obj in _client.ListObjects(_bucket, sessionPrefix))
 		{
@@ -106,6 +121,8 @@ public sealed class GcsArtifactService : IBaseArtifactService
 			string[] parts = rest.Split('/', StringSplitOptions.RemoveEmptyEntries);
 			if (parts.Length > 1) keys.Add(parts[0]);
 		}
+		
+		// Fetch global user-scoped artifact prefixes
 		string userPrefix = $"{request.AppName}/{request.UserId}/user/";
 		foreach (Google.Apis.Storage.v1.Data.Object obj in _client.ListObjects(_bucket, userPrefix))
 		{
@@ -120,6 +137,7 @@ public sealed class GcsArtifactService : IBaseArtifactService
 	/// <inheritdoc/>
 	public async Task DeleteArtifactAsync(DeleteArtifactRequest request)
 	{
+		// Gather and delete all versions that match the artifact prefix
 		string prefix = GetArtifactPrefix(request.AppName, request.UserId, request.SessionId, request.Filename);
 		foreach (Google.Apis.Storage.v1.Data.Object obj in _client.ListObjects(_bucket, prefix))
 		{
@@ -139,6 +157,8 @@ public sealed class GcsArtifactService : IBaseArtifactService
 	{
 		string prefix = GetArtifactPrefix(request.AppName, request.UserId, request.SessionId, request.Filename);
 		List<ArtifactVersion> versions = new List<ArtifactVersion>();
+		
+		// List all GCS objects matching the prefix and extract metadata
 		foreach (Google.Apis.Storage.v1.Data.Object obj in _client.ListObjects(_bucket, prefix))
 		{
 			if (TryParseVersion(obj.Name, out int version))
@@ -176,6 +196,7 @@ public sealed class GcsArtifactService : IBaseArtifactService
 
 	private static string GetArtifactPrefix(string appName, string userId, string sessionId, string filename)
 	{
+		// Normalize user-level artifacts vs session-level artifacts to appropriate GCS paths
 		string value = filename.StartsWith("user:") ? filename.Substring(5) : filename;
 		if (!filename.StartsWith("user:"))
 		{
@@ -187,6 +208,7 @@ public sealed class GcsArtifactService : IBaseArtifactService
 	private async Task<List<int>> ListVersionsInternalAsync(string prefix)
 	{
 		List<int> versions = new List<int>();
+		// Only select objects whose trailing path segment parses as a valid integer version
 		foreach (Google.Apis.Storage.v1.Data.Object obj in _client.ListObjects(_bucket, prefix))
 		{
 			if (TryParseVersion(obj.Name, out int version)) versions.Add(version);
@@ -210,6 +232,7 @@ public sealed class GcsArtifactService : IBaseArtifactService
 
 	private async Task<Google.Apis.Storage.v1.Data.Object?> SafeGetObjectAsync(string objectName)
 	{
+		// Wrapper that gracefully returns null instead of throwing on 404
 		try
 		{
 			return await _client.GetObjectAsync(_bucket, objectName);
