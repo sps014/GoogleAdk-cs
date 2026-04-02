@@ -185,7 +185,9 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             p.Type.ToDisplayString() == "GoogleAdk.Core.Agents.AgentContext");
 
         // Containing type info
-        string containingNamespace = method.ContainingType.ContainingNamespace?.ToDisplayString() ?? "";
+        string containingNamespace = method.ContainingType.ContainingNamespace?.IsGlobalNamespace == true 
+            ? "" 
+            : method.ContainingType.ContainingNamespace?.ToDisplayString() ?? "";
         string containingTypeName = method.ContainingType.Name;
         bool isContainingTypeStatic = method.ContainingType.IsStatic;
 
