@@ -30,6 +30,22 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor InvalidReturnTypeError = new DiagnosticDescriptor(
+        id: "ADK002",
+        title: "Invalid FunctionTool Return Type",
+        messageFormat: "Method '{0}' is marked as [FunctionTool] but returns '{1}'. Tools must return a value (no void/Task-only).",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor RequireConfirmationNeedsContextError = new DiagnosticDescriptor(
+        id: "ADK003",
+        title: "RequireConfirmation Requires AgentContext",
+        messageFormat: "Method '{0}' sets RequireConfirmation=true but does not accept an AgentContext parameter.",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var extracted = context.SyntaxProvider
@@ -77,16 +93,28 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
 
         string? nameOverride = null;
         bool isLongRunning = false;
+        bool requireConfirmation = false;
         foreach (var named in attr.NamedArguments)
         {
             if (named.Key == "Name" && named.Value.Value is string n)
                 nameOverride = n;
             if (named.Key == "IsLongRunning" && named.Value.Value is bool b)
                 isLongRunning = b;
+            if (named.Key == "RequireConfirmation" && named.Value.Value is bool rc)
+                requireConfirmation = rc;
         }
 
         // Tool name: attribute override or PascalCase → snake_case
         string toolName = nameOverride ?? ToSnakeCase(method.Name);
+
+        // Return type validation (must return a value, not void or Task)
+        if (IsInvalidReturnType(method))
+        {
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var returnType = method.ReturnType.ToDisplayString();
+            var diag = Diagnostic.Create(InvalidReturnTypeError, location, method.Name, returnType);
+            return new ExtractionResult(null, ImmutableArray.Create(diag));
+        }
 
         // XML doc extraction (reads directly from syntax tree to avoid requiring <GenerateDocumentationFile>true</GenerateDocumentationFile>)
         string description = "";
@@ -166,6 +194,7 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             ToolName = toolName,
             Description = description,
             IsLongRunning = isLongRunning,
+            RequireConfirmation = requireConfirmation,
             MethodName = method.Name,
             IsAsync = isAsync,
             HasContextParam = hasContext,
@@ -176,6 +205,13 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             IsStatic = method.IsStatic,
         };
 
+        if (requireConfirmation && !hasContext)
+        {
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var diag = Diagnostic.Create(RequireConfirmationNeedsContextError, location, method.Name);
+            return new ExtractionResult(null, ImmutableArray.Create(diag));
+        }
+
         if (string.IsNullOrWhiteSpace(description))
         {
             var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
@@ -184,6 +220,21 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         }
 
         return new ExtractionResult(model, ImmutableArray<Diagnostic>.Empty);
+    }
+
+    private static bool IsInvalidReturnType(IMethodSymbol method)
+    {
+        if (method.ReturnsVoid)
+            return true;
+
+        if (method.ReturnType is INamedTypeSymbol named &&
+            named.ToDisplayString() == "System.Threading.Tasks.Task" &&
+            named.TypeArguments.Length == 0)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -207,6 +258,7 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             sb.AppendLine();
             sb.AppendLine("using GoogleAdk.Core.Tools;");
             sb.AppendLine("using GoogleAdk.Core.Agents;");
+            sb.AppendLine("using GoogleAdk.Core.Abstractions.Tools;");
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.Threading.Tasks;");
             sb.AppendLine();
@@ -272,6 +324,7 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         {
             sb.AppendLine($"{pad2}execute: async (args, ctx) =>");
             sb.AppendLine($"{pad2}{{");
+            EmitRequireConfirmation(sb, tool, pad3, returnTask: false);
             EmitMethodCall(sb, tool, "args", "ctx", pad3);
             sb.AppendLine($"{pad2}}},");
         }
@@ -286,6 +339,7 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         {
             sb.AppendLine($"{pad2}execute: (args, ctx) =>");
             sb.AppendLine($"{pad2}{{");
+            EmitRequireConfirmation(sb, tool, pad3, returnTask: true);
             EmitMethodCallSync(sb, tool, "args", "ctx", pad3);
             sb.AppendLine($"{pad2}}},");
         }
@@ -301,6 +355,37 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         EmitParametersSchema(sb, tool, pad2);
 
         sb.AppendLine($"{pad2}isLongRunning: {(tool.IsLongRunning ? "true" : "false")});");
+    }
+
+    private static void EmitRequireConfirmation(StringBuilder sb, ToolModel tool, string pad, bool returnTask)
+    {
+        if (!tool.RequireConfirmation)
+            return;
+
+        sb.AppendLine($"{pad}if (string.IsNullOrEmpty(ctx.FunctionCallId))");
+        sb.AppendLine($"{pad}{{");
+        EmitReturn(sb, pad + "    ", returnTask, "new Dictionary<string, object?> { [\"error\"] = \"FunctionCallId is not set.\" }");
+        sb.AppendLine($"{pad}}}");
+        sb.AppendLine($"{pad}if (!ctx.EventActions.RequestedToolConfirmations.TryGetValue(ctx.FunctionCallId!, out var confirmation))");
+        sb.AppendLine($"{pad}{{");
+        sb.AppendLine($"{pad}    ctx.EventActions.RequestedToolConfirmations[ctx.FunctionCallId!] = new ToolConfirmation");
+        sb.AppendLine($"{pad}    {{");
+        sb.AppendLine($"{pad}        FunctionCallId = ctx.FunctionCallId!");
+        sb.AppendLine($"{pad}    }};");
+        EmitReturn(sb, pad + "    ", returnTask, "new Dictionary<string, object?> { [\"partial\"] = \"This tool call needs external confirmation before completion.\" }");
+        sb.AppendLine($"{pad}}}");
+        sb.AppendLine($"{pad}if (confirmation.Accepted != true)");
+        sb.AppendLine($"{pad}{{");
+        EmitReturn(sb, pad + "    ", returnTask, "new Dictionary<string, object?> { [\"error\"] = \"Tool call rejected from confirmation flow.\" }");
+        sb.AppendLine($"{pad}}}");
+    }
+
+    private static void EmitReturn(StringBuilder sb, string pad, bool returnTask, string expression)
+    {
+        if (returnTask)
+            sb.AppendLine($"{pad}return Task.FromResult<object?>({expression});");
+        else
+            sb.AppendLine($"{pad}return {expression};");
     }
 
     private static void EmitMethodCall(StringBuilder sb, ToolModel tool, string argsVar, string? ctxVar, string pad)
@@ -491,6 +576,7 @@ internal sealed class ToolModel : IEquatable<ToolModel>
     public string ToolName { get; set; } = "";
     public string Description { get; set; } = "";
     public bool IsLongRunning { get; set; }
+    public bool RequireConfirmation { get; set; }
     public string MethodName { get; set; } = "";
     public bool IsAsync { get; set; }
     public bool HasContextParam { get; set; }

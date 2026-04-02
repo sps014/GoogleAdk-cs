@@ -17,4 +17,9 @@ public sealed class FunctionToolAttribute : Attribute
     /// Whether this is a long-running tool.
     /// </summary>
     public bool IsLongRunning { get; set; }
+
+    /// <summary>
+    /// Whether this tool requires user confirmation before execution.
+    /// </summary>
+    public bool RequireConfirmation { get; set; }
 }

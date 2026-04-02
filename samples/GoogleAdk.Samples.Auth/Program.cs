@@ -1,126 +1,112 @@
 // ============================================================================
-// Auth System Sample — OAuth2 Flow with Credential Service
+// Auth Sample — LLM + Authenticated Tool
 // ============================================================================
 //
 // Demonstrates:
-//   1. AuthScheme configuration (OAuth2)
-//   2. AuthConfig creation with credential key
-//   3. AuthHandler for generating auth requests
-//   4. InMemoryCredentialService for storing/loading credentials
-//   5. CredentialExchangerRegistry for credential exchange
+//   1. OAuth2 AuthConfig wired to a tool
+//   2. LlmAgent invoking an authenticated tool
+//   3. Auth request event + simulated OAuth completion
 // ============================================================================
 
+using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Auth;
+using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
-using GoogleAdk.Core.Auth;
-using GoogleAdk.Core.Auth.CredentialService;
-using GoogleAdk.Core.Auth.Exchanger;
+using GoogleAdk.Core.Agents;
+using GoogleAdk.Core.Runner;
+using GoogleAdk.Samples.Auth;
 
-Console.WriteLine("=== Auth System Sample ===\n");
+AdkEnv.Load();
 
-// ── 1. Configure OAuth2 Auth Scheme ────────────────────────────────────────
+Console.WriteLine("=== Auth Sample (LLM) ===\n");
 
-var oauthScheme = new AuthScheme
+var authConfig = SampleAuthTools.CalendarAuthConfig;
+var calendarTool = SampleAuthTools.CalendarNextEventTool;
+
+var agent = new LlmAgent(new LlmAgentConfig
 {
-    Type = AuthSchemeType.OAuth2,
-    Description = "OAuth2 authorization code flow for API access",
-    Flows = new OAuth2Flows
+    Name = "auth",
+    Model = "gemini-2.5-flash",
+    Instruction = "Answer calendar questions by calling calendar_next_event.",
+    Tools = [calendarTool]
+});
+
+var runner = new InMemoryRunner("auth-sample", agent);
+var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRequest
+{
+    AppName = "auth-sample",
+    UserId = "user-1"
+});
+
+var userMessage = new Content
+{
+    Role = "user",
+    Parts = [new Part { Text = "What's my next meeting in PST?" }]
+};
+
+Console.WriteLine("User: What's my next meeting in PST?\n");
+
+var needsAuth = await RunOnceAsync(runner, session.Id, userMessage);
+if (needsAuth)
+{
+    Console.WriteLine("\nSimulating OAuth completion...\n");
+    var authState = new Dictionary<string, object?>
     {
-        AuthorizationCode = new OAuth2Flow
+        ["temp:" + authConfig.CredentialKey] = new AuthCredential
         {
-            AuthorizationUrl = "https://accounts.example.com/o/oauth2/v2/auth",
-            TokenUrl = "https://oauth2.example.com/token",
-            Scopes = new Dictionary<string, string>
+            AuthType = AuthCredentialType.OAuth2,
+            OAuth2Auth = new OAuth2Auth { AccessToken = "ya29.sample-token" }
+        }
+    };
+
+    var followup = new Content
+    {
+        Role = "user",
+        Parts = [new Part { Text = "Continue." }]
+    };
+
+    await RunOnceAsync(runner, session.Id, followup, authState);
+}
+
+Console.WriteLine("\n=== Auth Sample Complete ===");
+
+static async Task<bool> RunOnceAsync(
+    Runner runner,
+    string sessionId,
+    Content userMessage,
+    Dictionary<string, object?>? stateDelta = null)
+{
+    var needsAuth = false;
+
+    await foreach (var evt in runner.RunAsync("user-1", sessionId, userMessage, stateDelta))
+    {
+        if (evt.Actions.RequestedAuthConfigs.Count > 0)
+        {
+            needsAuth = true;
+            foreach (var (_, authRequest) in evt.Actions.RequestedAuthConfigs)
             {
-                ["read"] = "Read access",
-                ["write"] = "Write access"
+                if (authRequest is AuthConfig authConfig)
+                {
+                    var authUrl = authConfig.ExchangedAuthCredential?.OAuth2Auth?.AuthUri
+                                  ?? authConfig.RawAuthCredential?.OAuth2Auth?.AuthUri
+                                  ?? authConfig.AuthScheme.Flows?.AuthorizationCode?.AuthorizationUrl;
+
+                    Console.WriteLine("Auth required:");
+                    Console.WriteLine($"  Credential Key: {authConfig.CredentialKey}");
+                    Console.WriteLine($"  Auth URL: {authUrl}");
+                }
+            }
+        }
+
+        if (evt.IsFinalResponse() && evt.Content?.Parts != null)
+        {
+            foreach (var part in evt.Content.Parts)
+            {
+                if (!string.IsNullOrWhiteSpace(part.Text))
+                    Console.WriteLine($"Agent: {part.Text}");
             }
         }
     }
-};
 
-Console.WriteLine($"Auth Scheme Type: {oauthScheme.Type}");
-Console.WriteLine($"Authorization URL: {oauthScheme.Flows?.AuthorizationCode?.AuthorizationUrl}");
-
-// ── 2. Create Auth Config ──────────────────────────────────────────────────
-
-var authConfig = new AuthConfig
-{
-    CredentialKey = "my_api_oauth",
-    AuthScheme = oauthScheme,
-    RawAuthCredential = new AuthCredential
-    {
-        AuthType = AuthCredentialType.OAuth2,
-        OAuth2Auth = new OAuth2Auth
-        {
-            ClientId = "my-client-id",
-            ClientSecret = "my-client-secret",
-            RedirectUri = "http://localhost:8080/callback"
-        }
-    }
-};
-
-Console.WriteLine($"\nCredential Key: {authConfig.CredentialKey}");
-Console.WriteLine($"Client ID: {authConfig.RawAuthCredential?.OAuth2Auth?.ClientId}");
-
-// ── 3. Use AuthHandler ─────────────────────────────────────────────────────
-
-var handler = new AuthHandler(authConfig);
-var authRequest = handler.GenerateAuthRequest();
-
-Console.WriteLine($"\nGenerated Auth Request:");
-Console.WriteLine($"  Credential Key: {authRequest.CredentialKey}");
-Console.WriteLine($"  Has Exchanged Credential: {authRequest.ExchangedAuthCredential != null}");
-
-// Check auth response from state (empty state, no response yet)
-var state = new State();
-var authResponse = handler.GetAuthResponse(state);
-Console.WriteLine($"  Auth Response from State: {(authResponse != null ? "present" : "none")}");
-
-// ── 4. Credential Service ──────────────────────────────────────────────────
-
-var credentialService = new InMemoryCredentialService();
-Console.WriteLine("\nInMemoryCredentialService created.");
-Console.WriteLine("  (stores credentials keyed by appName → userId → credentialKey)");
-
-// ── 5. Credential Exchanger Registry ───────────────────────────────────────
-
-var registry = new CredentialExchangerRegistry();
-Console.WriteLine("\nCredentialExchangerRegistry created.");
-
-var exchanger = registry.GetExchanger(AuthCredentialType.OAuth2);
-Console.WriteLine($"  OAuth2 Exchanger registered: {exchanger != null}");
-
-// ── 6. API Key Auth (simpler flow) ────────────────────────────────────────
-
-var apiKeyScheme = new AuthScheme
-{
-    Type = AuthSchemeType.ApiKey,
-    Name = "X-API-Key",
-    In = "header",
-    Description = "Simple API key in header"
-};
-
-var apiKeyConfig = new AuthConfig
-{
-    CredentialKey = "my_api_key",
-    AuthScheme = apiKeyScheme,
-    RawAuthCredential = new AuthCredential
-    {
-        AuthType = AuthCredentialType.ApiKey,
-        HttpAuth = new HttpAuth
-        {
-            Scheme = "apiKey",
-            Credentials = new HttpCredentials { Token = "sk-sample-key-12345" }
-        }
-    }
-};
-
-var apiKeyHandler = new AuthHandler(apiKeyConfig);
-var apiKeyRequest = apiKeyHandler.GenerateAuthRequest();
-Console.WriteLine($"\nAPI Key Auth Request:");
-Console.WriteLine($"  Scheme Type: {apiKeyRequest.AuthScheme.Type}");
-Console.WriteLine($"  Header Name: {apiKeyRequest.AuthScheme.Name}");
-Console.WriteLine($"  Location: {apiKeyRequest.AuthScheme.In}");
-
-Console.WriteLine("\n=== Auth Sample Complete ===");
+    return needsAuth;
+}

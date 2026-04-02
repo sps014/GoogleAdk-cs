@@ -2,9 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\GoogleAdk.Core\GoogleAdk.Core.csproj" />
-    <ProjectReference Include="..\..\src\GoogleAdk.Core.Abstractions\GoogleAdk.Core.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\GoogleAdk.Evaluation\GoogleAdk.Evaluation.csproj" />
-    <ProjectReference Include="..\..\src\GoogleAdk.Optimization\GoogleAdk.Optimization.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.Dev\GoogleAdk.Dev.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.Models.Gemini\GoogleAdk.Models.Gemini.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.SourceGenerators\GoogleAdk.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
@@ -13,7 +12,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

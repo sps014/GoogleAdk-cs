@@ -1,107 +1,73 @@
 // ============================================================================
-// Code Executors Sample — Code Execution Models & Context
+// Code Executors Sample — LLM + Built-in Code Execution
 // ============================================================================
 //
 // Demonstrates:
-//   1. CodeExecutionInput/Output — data models for code execution
-//   2. BuiltInCodeExecutor — model-native code execution (Gemini 2.0+)
-//   3. CodeExecutorContext — persistent execution state across invocations
-//   4. BaseCodeExecutor — extensible base with configurable delimiters
+//   1. LlmAgent configured with BuiltInCodeExecutor
+//   2. Executable code + execution results returned in events
 // ============================================================================
 
-using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
+using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.CodeExecutors;
-using GoogleAdk.Core;
+using GoogleAdk.Core.Runner;
 
 AdkEnv.Load();
 
-Console.WriteLine("=== Code Executors Sample ===\n");
+Console.WriteLine("=== Code Executors Sample (LLM) ===\n");
 
-// ── 1. Code Execution Data Models ──────────────────────────────────────────
-
-Console.WriteLine("--- CodeExecutionInput/Output ---\n");
-
-var input = new CodeExecutionInput
+var agent = new LlmAgent(new LlmAgentConfig
 {
-    Code = "import math\nprint(math.sqrt(144))",
-    InputFiles = new List<CodeFile>
-    {
-        new() { Name = "data.csv", Content = Convert.ToBase64String("a,b\n1,2\n3,4"u8.ToArray()), MimeType = "text/csv" }
-    },
-    ExecutionId = "exec-001"
+    Name = "code",
+    Model = "gemini-2.5-flash",
+    Instruction = "Use Python code execution for calculations.",
+    CodeExecutor = new BuiltInCodeExecutor()
+});
+
+var runner = new InMemoryRunner("code-exec-sample", agent);
+var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRequest
+{
+    AppName = "code-exec-sample",
+    UserId = "user-1"
+});
+
+var userMessage = new Content
+{
+    Role = "user",
+    Parts =
+    [
+        new Part { Text = "Calculate the mean and standard deviation of [3, 5, 8, 10, 12]. Show the result." }
+    ]
 };
 
-Console.WriteLine($"Code: {input.Code}");
-Console.WriteLine($"Input Files: {input.InputFiles.Count} ({input.InputFiles[0].Name})");
-Console.WriteLine($"Execution ID: {input.ExecutionId}");
+Console.WriteLine("User: Calculate the mean and standard deviation of [3, 5, 8, 10, 12].\n");
 
-var output = new CodeExecutionOutput
+await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
 {
-    Stdout = "12.0\n",
-    Stderr = "",
-    OutputFiles = new List<CodeFile>
+    if (evt.Content?.Parts == null) continue;
+
+    foreach (var part in evt.Content.Parts)
     {
-        new() { Name = "result.png", Content = "iVBORw0KGgo=", MimeType = "image/png" }
+        if (part.ExecutableCode?.Code != null)
+        {
+            Console.WriteLine($"Executable code ({part.ExecutableCode.Language}):");
+            Console.WriteLine(part.ExecutableCode.Code);
+            Console.WriteLine();
+        }
+
+        if (part.CodeExecutionResult != null)
+        {
+            Console.WriteLine("Code execution result:");
+            Console.WriteLine(part.CodeExecutionResult.Output);
+        }
+
+        if (!string.IsNullOrWhiteSpace(part.Text))
+        {
+            Console.WriteLine($"Agent: {part.Text}");
+        }
     }
-};
-
-Console.WriteLine($"\nStdout: {output.Stdout.Trim()}");
-Console.WriteLine($"Stderr: {(string.IsNullOrEmpty(output.Stderr) ? "(empty)" : output.Stderr)}");
-Console.WriteLine($"Output Files: {output.OutputFiles.Count} ({output.OutputFiles[0].Name})");
-
-// ── 2. BuiltInCodeExecutor ─────────────────────────────────────────────────
-
-Console.WriteLine("\n--- BuiltInCodeExecutor ---\n");
-
-var builtIn = new BuiltInCodeExecutor();
-Console.WriteLine($"OptimizeDataFile: {builtIn.OptimizeDataFile}");
-Console.WriteLine($"Stateful: {builtIn.Stateful}");
-Console.WriteLine($"ErrorRetryAttempts: {builtIn.ErrorRetryAttempts}");
-
-// Show how it modifies LLM requests to enable code execution
-var llmRequest = new LlmRequest
-{
-    Model = "gemini-2.5-flash"
-};
-
-builtIn.ProcessLlmRequest(llmRequest);
-Console.WriteLine($"LLM Request tools count after processing: {llmRequest.Config?.Tools?.Count}");
-Console.WriteLine("(BuiltInCodeExecutor adds code_execution tool declaration to the LLM request)");
-
-// ── 3. CodeExecutorContext ─────────────────────────────────────────────────
-
-Console.WriteLine("\n--- CodeExecutorContext ---\n");
-
-var state = new State();
-var execCtx = new CodeExecutorContext(state);
-
-Console.WriteLine($"Initial Execution ID: {execCtx.GetExecutionId() ?? "(none)"}");
-Console.WriteLine($"Initial Error Count: {execCtx.GetErrorCount()}");
-Console.WriteLine($"Initial Processed Files: [{string.Join(", ", execCtx.GetProcessedFileNames())}]");
-
-execCtx.SetExecutionId("session-42");
-execCtx.AddProcessedFileName("data.csv");
-execCtx.AddProcessedFileName("config.json");
-execCtx.SetErrorCount(execCtx.GetErrorCount() + 1);
-
-Console.WriteLine($"\nAfter updates:");
-Console.WriteLine($"  Execution ID: {execCtx.GetExecutionId()}");
-Console.WriteLine($"  Error Count: {execCtx.GetErrorCount()}");
-Console.WriteLine($"  Processed Files: [{string.Join(", ", execCtx.GetProcessedFileNames())}]");
-
-var delta = execCtx.GetStateDelta();
-Console.WriteLine($"  State delta keys: [{string.Join(", ", delta.Keys)}]");
-
-// ── 4. BaseCodeExecutor Configuration ──────────────────────────────────────
-
-Console.WriteLine("\n--- BaseCodeExecutor Configuration ---\n");
-
-Console.WriteLine("Default code block delimiters:");
-foreach (var (open, close) in builtIn.CodeBlockDelimiters)
-    Console.WriteLine($"  Open: {open.Trim()} → Close: {close.Trim()}");
-
-Console.WriteLine($"Execution result delimiters: {builtIn.ExecutionResultDelimiters.Open.Trim()} → {builtIn.ExecutionResultDelimiters.Close.Trim()}");
+}
 
 Console.WriteLine("\n=== Code Executors Sample Complete ===");

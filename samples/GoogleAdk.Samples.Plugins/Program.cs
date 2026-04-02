@@ -1,21 +1,24 @@
 // ============================================================================
-// Plugins Sample — Security & Logging Plugins
+// Plugins Sample — Security & Logging Plugins with LLM
 // ============================================================================
 //
 // Demonstrates:
 //   1. LoggingPlugin — logs all callback events to console
 //   2. SecurityPlugin — policy-based tool call gating (deny/confirm/allow)
 //   3. Custom IBasePolicyEngine — configurable deny list
-//   4. PluginManager — registering multiple plugins
+//   4. Runner wiring plugins into an LLM flow
 // ============================================================================
 
 using GoogleAdk.Core;
-using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Abstractions.Tools;
 using GoogleAdk.Core.Agents;
+using GoogleAdk.Core.Artifacts;
+using GoogleAdk.Core.Memory;
 using GoogleAdk.Core.Plugins;
+using GoogleAdk.Core.Runner;
+using GoogleAdk.Core.Sessions;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Samples.Plugins;
 
@@ -23,95 +26,83 @@ AdkEnv.Load();
 
 Console.WriteLine("=== Plugins Sample ===\n");
 
-// ── 1. LoggingPlugin ───────────────────────────────────────────────────────
-
-Console.WriteLine("--- LoggingPlugin ---\n");
-
+// ── 1. LoggingPlugin + SecurityPlugin ──────────────────────────────────────
 var logs = new List<string>();
 var loggingPlugin = new LoggingPlugin(logAction: msg => logs.Add(msg));
 
-// Simulate callbacks
-var invocationContext = new InvocationContext
-{
-    Session = Session.Create("s1", "plugin-demo", "user-1"),
-    Agent = null!,
-};
-
-var userMessage = new Content
-{
-    Role = "user",
-    Parts = new List<Part> { new() { Text = "What's the weather?" } }
-};
-
-await loggingPlugin.OnUserMessageCallbackAsync(invocationContext, userMessage);
-await loggingPlugin.BeforeRunCallbackAsync(invocationContext);
-
-var sampleEvent = Event.Create(e =>
-{
-    e.Author = "weather_agent";
-    e.Content = new Content
-    {
-        Role = "model",
-        Parts = new List<Part> { new() { Text = "It's sunny and 72°F." } }
-    };
-});
-
-await loggingPlugin.OnEventCallbackAsync(invocationContext, sampleEvent);
-await loggingPlugin.AfterRunCallbackAsync(invocationContext);
-
-Console.WriteLine($"Captured {logs.Count} log entries:");
-foreach (var log in logs.Take(8))
-    Console.WriteLine($"  {log}");
-if (logs.Count > 8)
-    Console.WriteLine($"  ... and {logs.Count - 8} more");
-
-// ── 2. SecurityPlugin with Custom Policy Engine ────────────────────────────
-
-Console.WriteLine("\n--- SecurityPlugin ---\n");
-
-// A custom policy engine that denies "dangerous_tool" and confirms "sensitive_tool"
 var customPolicy = new DenyListPolicyEngine(
     denyList: new[] { "dangerous_tool" },
     confirmList: new[] { "sensitive_tool" });
 
 var securityPlugin = new SecurityPlugin(customPolicy);
 
-// Simulate tool call checks
-var safeContext = new AgentContext(invocationContext);
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "plugin-agent",
+    Model = "gemini-2.5-flash",
+    Instruction = "Call safe_tool, then dangerous_tool, then sensitive_tool. Explain what happened.",
+    Tools =
+    [
+        SamplePluginTools.SafeToolTool,
+        SamplePluginTools.DangerousToolTool,
+        SamplePluginTools.SensitiveToolTool
+    ]
+});
 
-var safeTool = SamplePluginTools.SafeToolTool;
+var runner = new Runner(new RunnerConfig
+{
+    AppName = "plugins-sample",
+    Agent = agent,
+    SessionService = new InMemorySessionService(),
+    ArtifactService = new InMemoryArtifactService(),
+    MemoryService = new InMemoryMemoryService(),
+    Plugins = new BasePlugin[] { loggingPlugin, securityPlugin }
+});
 
-var beforeResult = await securityPlugin.BeforeToolCallbackAsync(
-    safeTool, new Dictionary<string, object?>(), safeContext);
-Console.WriteLine($"safe_tool: {(beforeResult == null ? "ALLOWED" : "BLOCKED")}");
+var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRequest
+{
+    AppName = "plugins-sample",
+    UserId = "user-1"
+});
 
-var dangerousTool = SamplePluginTools.DangerousToolTool;
+var userMessage = new Content
+{
+    Role = "user",
+    Parts = [new Part { Text = "Demonstrate safe_tool, dangerous_tool, and sensitive_tool." }]
+};
 
-var dangerousContext = new AgentContext(invocationContext);
-dangerousContext.FunctionCallId = "call-1";
-var dangerousResult = await securityPlugin.BeforeToolCallbackAsync(
-    dangerousTool, new Dictionary<string, object?>(), dangerousContext);
-Console.WriteLine($"dangerous_tool: {(dangerousResult?.ContainsKey("error") == true ? "DENIED" : "ALLOWED")}");
-if (dangerousResult?.ContainsKey("error") == true)
-    Console.WriteLine($"  Reason: {dangerousResult["error"]}");
+await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
+{
+    foreach (var response in evt.GetFunctionResponses())
+    {
+        var result = response.Response != null
+            ? string.Join(", ", response.Response.Select(kv => $"{kv.Key}={kv.Value}"))
+            : "(null)";
+        Console.WriteLine($"Tool response ({response.Name}): {result}");
+    }
 
-var sensitiveTool = SamplePluginTools.SensitiveToolTool;
+    if (evt.Actions.RequestedToolConfirmations.Count > 0)
+    {
+        Console.WriteLine("Tool confirmation requested:");
+        foreach (var confirmation in evt.Actions.RequestedToolConfirmations.Values)
+            Console.WriteLine($"  FunctionCallId={confirmation.FunctionCallId}");
+    }
 
-var sensitiveContext = new AgentContext(invocationContext);
-sensitiveContext.FunctionCallId = "call-2";
-var sensitiveResult = await securityPlugin.BeforeToolCallbackAsync(
-    sensitiveTool, new Dictionary<string, object?>(), sensitiveContext);
-Console.WriteLine($"sensitive_tool: {(sensitiveResult?.ContainsKey("partial") == true ? "NEEDS CONFIRMATION" : "ALLOWED")}");
+    if (evt.IsFinalResponse() && evt.Content?.Parts != null)
+    {
+        foreach (var part in evt.Content.Parts)
+        {
+            if (!string.IsNullOrWhiteSpace(part.Text))
+                Console.WriteLine($"Agent: {part.Text}");
+        }
+    }
+}
 
-// ── 3. PluginManager ──────────────────────────────────────────────────────
-
-Console.WriteLine("\n--- PluginManager ---\n");
-
-var pluginManager = new PluginManager(new BasePlugin[] { loggingPlugin, securityPlugin });
-
-Console.WriteLine("Registered plugins:");
-Console.WriteLine($"  - {pluginManager.GetPlugin("logging_plugin")?.Name}");
-Console.WriteLine($"  - {pluginManager.GetPlugin("security_plugin")?.Name}");
+Console.WriteLine($"\nCaptured {logs.Count} log entries:");
+foreach (var log in logs.Take(8))
+    Console.WriteLine($"  {log}");
+if (logs.Count > 8)
+    Console.WriteLine($"  ... and {logs.Count - 8} more");
 
 Console.WriteLine("\n=== Plugins Sample Complete ===");
 
