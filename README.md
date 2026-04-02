@@ -104,7 +104,7 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
 Same as the Python Development UI. A built-in development UI to help you test,
 evaluate, debug, and showcase your agent(s).
 
-<img  alt="Image" src="https://github.com/user-attachments/assets/8ce4b6ef-6c36-4beb-8283-dc1cf41787cd" />
+<img  alt="Image" src="https://github.com/user-attachments/assets/1f8db230-b8f2-4b3c-85c8-54c32ea9e379" />
 
 ### Evaluate Agents
 
