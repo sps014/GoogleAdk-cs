@@ -29,6 +29,8 @@ using GoogleAdk.Core.Tools;
 using GoogleAdk.ApiServer;
 using GoogleAdk.Models.Gemini;
 
+AdkEnv.Load();
+
 var model = GeminiModelFactory.Create("gemini-2.5-flash");
 
 // ── Parallel: Tech News + Sports News ──────────────────────────────────────

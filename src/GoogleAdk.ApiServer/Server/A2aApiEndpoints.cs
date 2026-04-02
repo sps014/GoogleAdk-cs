@@ -56,7 +56,7 @@ public static class A2aApiEndpoints
                     {
                         JsonRpc = "2.0",
                         Id = request.Id,
-                        Result = JsonSerializer.SerializeToElement(evt, s_jsonOptions),
+                        Result = JsonSerializer.SerializeToElement(evt, evt.GetType(), s_jsonOptions),
                     };
                     var json = JsonSerializer.Serialize(rpc, s_jsonOptions);
                     await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
@@ -95,7 +95,7 @@ public static class A2aApiEndpoints
 
             await foreach (var evt in ExecuteA2aAsync(appName, request, loader, manager, http.RequestAborted))
             {
-                var json = JsonSerializer.Serialize(evt, s_jsonOptions);
+                var json = JsonSerializer.Serialize(evt, evt.GetType(), s_jsonOptions);
                 await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
                 await http.Response.Body.FlushAsync(http.RequestAborted);
             }

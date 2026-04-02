@@ -583,6 +583,13 @@ public class LlmAgent : BaseAgent
         if (calls.Count == 0)
             yield break;
 
+        // Partial function call events must not trigger execution.
+        // Partial events are streaming chunks and are not saved to session — executing
+        // them would duplicate tool calls. The final (non-partial) FC event drives execution.
+        // Mirrors Python: `if model_response_event.partial: return`
+        if (mergedEvent.Partial == true)
+            yield break;
+
         if (invocationContext.RunConfig?.PauseOnToolCalls == true)
         {
             invocationContext.EndInvocation = true;
