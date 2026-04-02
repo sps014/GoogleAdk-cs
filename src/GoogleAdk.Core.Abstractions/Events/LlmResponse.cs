@@ -59,4 +59,7 @@ public class LlmResponse
 
     /// <summary>The raw representation of the response from the underlying provider.</summary>
     public object? RawRepresentation { get; set; }
+
+    /// <summary>Context cache metadata if caching was used for this response.</summary>
+    public CacheMetadata? CacheMetadata { get; set; }
 }

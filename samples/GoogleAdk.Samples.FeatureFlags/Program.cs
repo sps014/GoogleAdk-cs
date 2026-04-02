@@ -9,6 +9,7 @@ using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Apps;
 using GoogleAdk.Core.Features;
 using GoogleAdk.Core.Plugins;
+using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Context;
 using GoogleAdk.Models.Gemini;
 using GoogleAdk.Samples.FeatureFlags;
@@ -25,7 +26,7 @@ var agent = new LlmAgent(new LlmAgentConfig
     Name = "app-agent",
     Model = "gemini-2.5-flash",
     Instruction = "Call render_widget at least once and then respond briefly.",
-    ContextCacheConfig = new ContextCacheConfig { CacheKey = "sample" },
+    ContextCacheConfig = new ContextCacheConfig(),
     Tools =
     [
         SampleFeatureTools.RenderWidgetTool

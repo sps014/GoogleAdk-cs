@@ -4,9 +4,9 @@ using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Sessions;
-using GoogleAdk.Dev.Server;
+using GoogleAdk.ApiServer.Server;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 /// <summary>
 /// The "run" command — interactive CLI agent conversation.

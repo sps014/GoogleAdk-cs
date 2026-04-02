@@ -5,8 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>GoogleAdk.Dev</RootNamespace>
-    <AssemblyName>GoogleAdk.Dev</AssemblyName>
+    <RootNamespace>GoogleAdk.ApiServer</RootNamespace>
+    <AssemblyName>GoogleAdk.ApiServer</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

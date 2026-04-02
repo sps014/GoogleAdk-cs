@@ -1,7 +1,7 @@
 using System.CommandLine;
 using System.Diagnostics;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 /// <summary>
 /// The "deploy" command — deploys an agent to Google Cloud Run.
@@ -167,7 +167,7 @@ public static class DeployCommand
             WORKDIR /app
             COPY --from=build /out .
             EXPOSE {port}
-            ENTRYPOINT ["dotnet", "GoogleAdk.Dev.dll", "{adkCommand}", "--port", "{port}", "--bind", "0.0.0.0"]
+            ENTRYPOINT ["dotnet", "GoogleAdk.ApiServer.dll", "{adkCommand}", "--port", "{port}", "--bind", "0.0.0.0"]
             """;
     }
 

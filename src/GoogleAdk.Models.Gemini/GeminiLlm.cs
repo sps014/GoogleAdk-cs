@@ -34,6 +34,16 @@ public class GeminiLlm : MeaiLlm
         // Extract the underlying GenerativeModel to configure native tools
         var genModel = _client.model;
 
+        if (genModel != null && llmRequest.CacheConfig != null)
+        {
+            var cacheManager = new GeminiContextCacheManager(genModel);
+            var cacheMetadata = await cacheManager.HandleContextCachingAsync(llmRequest);
+            if (cacheMetadata != null)
+            {
+                llmRequest.CacheMetadata = cacheMetadata;
+            }
+        }
+
         if (genModel != null && llmRequest.Config?.Tools != null)
         {
             // Reset specialized tool state
@@ -99,6 +109,12 @@ public class GeminiLlm : MeaiLlm
                     };
                 }
             }
+
+            if (llmRequest.CacheMetadata != null)
+            {
+                resp.CacheMetadata = llmRequest.CacheMetadata.Clone();
+            }
+
             yield return resp;
         }
     }

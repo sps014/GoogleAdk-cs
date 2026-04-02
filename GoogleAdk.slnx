@@ -32,6 +32,7 @@
     <Project Path="samples/GoogleAdk.Samples.Auth/GoogleAdk.Samples.Auth.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Plugins/GoogleAdk.Samples.Plugins.csproj" />
     <Project Path="samples/GoogleAdk.Samples.ArtifactsWeb/GoogleAdk.Samples.ArtifactsWeb.csproj" />
+    <Project Path="samples/GoogleAdk.Samples.ContextCaching/GoogleAdk.Samples.ContextCaching.csproj" />
     <Project Path="samples/GoogleAdk.Samples.CodeExecutors/GoogleAdk.Samples.CodeExecutors.csproj" />
     <Project Path="samples/GoogleAdk.Samples.VertexAiSearch/GoogleAdk.Samples.VertexAiSearch.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Ollama/GoogleAdk.Samples.Ollama.csproj" />
@@ -46,13 +47,13 @@
   <Folder Name="/src/">
     <Project Path="src/GoogleAdk.Core.Abstractions/GoogleAdk.Core.Abstractions.csproj" />
     <Project Path="src/GoogleAdk.Core/GoogleAdk.Core.csproj" />
-    <Project Path="src/GoogleAdk.Dev/GoogleAdk.Dev.csproj" />
     <Project Path="src/GoogleAdk.Models.Gemini/GoogleAdk.Models.Gemini.csproj" />
     <Project Path="src/GoogleAdk.Models.Meai/GoogleAdk.Models.Meai.csproj" />
     <Project Path="src/GoogleAdk.Sessions.EfCore/GoogleAdk.Sessions.EfCore.csproj" />
     <Project Path="src/GoogleAdk.SourceGenerators/GoogleAdk.SourceGenerators.csproj" />
     <Project Path="src/GoogleAdk.Tools.Mcp/GoogleAdk.Tools.Mcp.csproj" />
     <Project Path="src/GoogleAdk.Tools.OpenApi/GoogleAdk.Tools.OpenApi.csproj" />
+    <Project Path="src/GoogleAdk.ApiServer/GoogleAdk.ApiServer.csproj" />
     <Project Path="src/GoogleAdk.Evaluation/GoogleAdk.Evaluation.csproj" />
     <Project Path="src/GoogleAdk.Optimization/GoogleAdk.Optimization.csproj" />
   </Folder>

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using System.Runtime.Loader;
 
-namespace GoogleAdk.Dev.Server;
+namespace GoogleAdk.ApiServer.Server;
 
 internal static class DevServerLifetime
 {

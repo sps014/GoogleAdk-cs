@@ -1,10 +1,10 @@
 using System.CommandLine;
-using GoogleAdk.Dev.Server;
+using GoogleAdk.ApiServer.Server;
 using GoogleAdk.Core.Sessions;
 using GoogleAdk.Core.Abstractions.Sessions;
 using Microsoft.Extensions.FileProviders;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 /// <summary>
 /// The "web" command — starts the API server with the embedded dev UI.
@@ -105,7 +105,7 @@ public static class WebCommand
         if (serveUi)
         {
             var embeddedProvider = new EmbeddedFileProvider(
-                typeof(WebCommand).Assembly, "GoogleAdk.Dev.wwwroot");
+                typeof(WebCommand).Assembly, "GoogleAdk.ApiServer.wwwroot");
 
             app.UseDefaultFiles(new DefaultFilesOptions
             {

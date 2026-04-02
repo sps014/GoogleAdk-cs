@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 public static class EvalCommand
 {

@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 /// <summary>
 /// The "api_server" command — starts the API server without the dev UI.

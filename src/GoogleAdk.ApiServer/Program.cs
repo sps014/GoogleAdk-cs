@@ -1,5 +1,5 @@
 using System.CommandLine;
-using GoogleAdk.Dev.Cli;
+using GoogleAdk.ApiServer.Cli;
 
 var rootCommand = new RootCommand("Google ADK for .NET — Developer Tools");
 rootCommand.Subcommands.Add(WebCommand.Create());

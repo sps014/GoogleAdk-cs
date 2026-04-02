@@ -111,6 +111,21 @@ public class LlmRequest
             });
         }
     }
+
+    /// <summary>
+    /// Context cache configuration for this request. (Defined as object to avoid circular references if necessary, or passed via downcast)
+    /// </summary>
+    public object? CacheConfig { get; set; }
+
+    /// <summary>
+    /// The cache metadata attached to the request.
+    /// </summary>
+    public CacheMetadata? CacheMetadata { get; set; }
+
+    /// <summary>
+    /// Token count for cacheable contents.
+    /// </summary>
+    public int? CacheableContentsTokenCount { get; set; }
 }
 
 /// <summary>

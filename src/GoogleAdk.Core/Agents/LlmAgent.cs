@@ -2,6 +2,7 @@ using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents.Processors;
 using GoogleAdk.Core.CodeExecutors;
+using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Context;
 using GoogleAdk.Core.Examples;
 using GoogleAdk.Core.Planning;
@@ -560,6 +561,7 @@ public class LlmAgent : BaseAgent
             e.Partial = llmResponse.Partial;
             e.Interrupted = llmResponse.Interrupted;
             e.CustomMetadata = llmResponse.CustomMetadata;
+            e.CacheMetadata = llmResponse.CacheMetadata;
         });
 
         if (mergedEvent.Content != null)

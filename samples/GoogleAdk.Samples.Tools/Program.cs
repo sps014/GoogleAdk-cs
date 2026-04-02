@@ -36,7 +36,7 @@ var agent = new LlmAgent(new LlmAgentConfig
         {
             var toolCount = request.Config?.Tools?.Count ?? 0;
             Console.WriteLine($"Tool declarations added to request: {toolCount}");
-            return Task.FromResult<GoogleAdk.Core.Abstractions.Models.LlmResponse?>(null);
+            return Task.FromResult<GoogleAdk.Core.Abstractions.Events.LlmResponse?>(null);
         }
     ]
 });

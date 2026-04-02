@@ -1,4 +1,5 @@
 using GoogleAdk.Core.Agents;
+using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Context;
 using GoogleAdk.Core.Plugins;
 

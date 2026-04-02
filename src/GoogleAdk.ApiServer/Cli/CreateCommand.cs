@@ -1,6 +1,6 @@
 using System.CommandLine;
 
-namespace GoogleAdk.Dev.Cli;
+namespace GoogleAdk.ApiServer.Cli;
 
 /// <summary>
 /// The "create" command — scaffolds a new agent project.
