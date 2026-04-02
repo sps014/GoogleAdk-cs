@@ -45,11 +45,7 @@ public class NewFeaturesE2eTests
             [
                 GeneratedTools.NoopTool
             ],
-            OutputSchema = new Dictionary<string, object?>
-            {
-                ["type"] = "object",
-                ["properties"] = new Dictionary<string, object?> { ["foo"] = new Dictionary<string, object?> { ["type"] = "string" } }
-            }
+            OutputSchema = typeof(TestSchemaOutput)
         });
 
         var runner = new InMemoryRunner("schema-e2e", agent);
@@ -279,4 +275,9 @@ public class NewFeaturesE2eTests
             }
         }
     }
+}
+
+public class TestSchemaOutput
+{
+    public string? Foo { get; set; }
 }

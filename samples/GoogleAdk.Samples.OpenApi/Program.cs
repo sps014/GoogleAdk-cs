@@ -73,7 +73,7 @@ else
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "openapi_agent",
-    ModelName = "gemini-2.5-flash",
+    Model = "gemini-2.5-flash",
     Instruction = "Use tools to find the requested data.",
     Tools = new List<GoogleAdk.Core.Abstractions.Events.IBaseTool> { toolset }
 });

@@ -1,4 +1,5 @@
 using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Tools;
 
 namespace GoogleAdk.Core.Agents.Processors;
@@ -25,7 +26,7 @@ public sealed class OutputSchemaRequestProcessor : BaseLlmRequestProcessor
         llmRequest.Config.ResponseSchema = null;
         llmRequest.Config.ResponseMimeType = null;
 
-        var setModelResponseTool = new SetModelResponseTool(agent.OutputSchema);
+        var setModelResponseTool = new SetModelResponseTool(SchemaHelper.TypeToSchemaDict(agent.OutputSchema));
         await setModelResponseTool.ProcessLlmRequestAsync(new AgentContext(invocationContext), llmRequest);
 
         llmRequest.AppendInstructions(

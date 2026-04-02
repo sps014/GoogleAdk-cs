@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core.Agents;
 
 namespace GoogleAdk.Core.Agents.Processors;
 
@@ -38,6 +39,6 @@ public class BasicLlmRequestProcessor : BaseLlmRequestProcessor
         }
 
         if (agent.OutputSchema != null)
-            llmRequest.SetOutputSchema(agent.OutputSchema);
+            llmRequest.SetOutputSchema(SchemaHelper.TypeToSchemaDict(agent.OutputSchema));
     }
 }

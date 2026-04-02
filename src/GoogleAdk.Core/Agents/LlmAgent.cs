@@ -59,11 +59,8 @@ public delegate Task<Dictionary<string, object?>?> AfterToolCallback(
 /// </summary>
 public class LlmAgentConfig : BaseAgentConfig
 {
-    /// <summary>The LLM model to use (BaseLlm instance or model name string).</summary>
-    public BaseLlm? Model { get; set; }
-
-    /// <summary>The model name (resolved via LlmRegistry if Model is not set).</summary>
-    public string? ModelName { get; set; }
+    /// <summary>The LLM model — accepts a <see cref="BaseLlm"/> instance or a model name string via implicit conversion.</summary>
+    public LlmModel? Model { get; set; }
 
     /// <summary>Static instruction string or dynamic provider.</summary>
     public string? Instruction { get; set; }
@@ -116,8 +113,8 @@ public class LlmAgentConfig : BaseAgentConfig
     /// <summary>After tool callbacks.</summary>
     public List<AfterToolCallback>? AfterToolCallbacks { get; set; }
 
-    /// <summary>Output schema for structured output.</summary>
-    public Dictionary<string, object?>? OutputSchema { get; set; }
+    /// <summary>Output schema type for structured output. The JSON schema is derived automatically via System.Text.Json.</summary>
+    public Type? OutputSchema { get; set; }
 
     /// <summary>Input schema for the agent.</summary>
     public Dictionary<string, object?>? InputSchema { get; set; }
@@ -157,8 +154,7 @@ public class LlmAgentConfig : BaseAgentConfig
 /// </summary>
 public class LlmAgent : BaseAgent
 {
-    public BaseLlm? Model { get; set; }
-    public string? ModelName { get; set; }
+    public LlmModel? Model { get; set; }
     public string? Instruction { get; set; }
     public InstructionProvider? InstructionProviderFunc { get; set; }
     public string? GlobalInstruction { get; set; }
@@ -175,7 +171,7 @@ public class LlmAgent : BaseAgent
     public List<BeforeToolCallback> BeforeToolCallbacks { get; }
     public List<OnToolErrorCallback> OnToolErrorCallbacks { get; }
     public List<AfterToolCallback> AfterToolCallbacks { get; }
-    public Dictionary<string, object?>? OutputSchema { get; set; }
+    public Type? OutputSchema { get; set; }
     public Dictionary<string, object?>? InputSchema { get; set; }
     public string? OutputKey { get; set; }
     public bool DisallowTransferToParent { get; set; } = false;
@@ -188,7 +184,6 @@ public class LlmAgent : BaseAgent
     public LlmAgent(LlmAgentConfig config) : base(config)
     {
         Model = config.Model;
-        ModelName = config.ModelName;
         Instruction = config.Instruction;
         InstructionProviderFunc = config.InstructionProvider;
         GlobalInstruction = config.GlobalInstruction;
@@ -274,17 +269,13 @@ public class LlmAgent : BaseAgent
         get
         {
             if (Model != null)
-                return Model;
-            if (!string.IsNullOrWhiteSpace(ModelName))
-                return LlmRegistry.NewLlm(ModelName);
+                return Model.Resolve();
 
             var ancestor = ParentAgent;
             while (ancestor != null)
             {
                 if (ancestor is LlmAgent llmAncestor && llmAncestor.Model != null)
                     return llmAncestor.CanonicalModel;
-                if (ancestor is LlmAgent llmWithName && !string.IsNullOrWhiteSpace(llmWithName.ModelName))
-                    return LlmRegistry.NewLlm(llmWithName.ModelName);
                 ancestor = ancestor.ParentAgent;
             }
 

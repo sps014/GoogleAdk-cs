@@ -220,11 +220,7 @@ public class NewFeaturesTests
         var agent = new LlmAgent(new LlmAgentConfig
         {
             Name = "schema",
-            OutputSchema = new Dictionary<string, object?>
-            {
-                ["type"] = "object",
-                ["properties"] = new Dictionary<string, object?> { ["foo"] = new Dictionary<string, object?> { ["type"] = "string" } }
-            },
+            OutputSchema = typeof(TestSchemaOutput),
             Tools =
             [
                 GeneratedTools.NoopTool
@@ -531,4 +527,9 @@ public class NewFeaturesTests
         public Task<SamplingResult> SampleAndScoreAsync(string candidate, CancellationToken cancellationToken = default)
             => Task.FromResult(new SamplingResult { Score = 1.0 });
     }
+}
+
+public class TestSchemaOutput
+{
+    public string? Foo { get; set; }
 }

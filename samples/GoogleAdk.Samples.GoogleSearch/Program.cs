@@ -19,6 +19,8 @@ using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Models.Gemini;
 
+AdkEnv.Load();
+
 var model = GeminiModelFactory.Create("gemini-2.5-flash");
 
 var searchAgent = new LlmAgent(new LlmAgentConfig

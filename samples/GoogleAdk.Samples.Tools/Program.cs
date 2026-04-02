@@ -9,6 +9,8 @@ using GoogleAdk.Core.Agents;
 using GoogleAdk.Core;
 using GoogleAdk.Core.Tools;
 
+AdkEnv.Load();
+
 Console.WriteLine("=== Tools Sample ===\n");
 
 var authTool = new AuthenticatedFunctionTool(

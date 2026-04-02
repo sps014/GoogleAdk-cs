@@ -1,9 +1,12 @@
+using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Dev;
 using GoogleAdk.Models.Gemini;
+
+AdkEnv.Load();
 
 Console.WriteLine("==> Demo: Vertex AI Search Tool\n");
 
@@ -22,7 +25,7 @@ var vertexSearchTool = new VertexAiSearchTool(dataStoreId: dataStoreId);
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "search_agent",
-    ModelName = "gemini-2.5-pro",
+    Model = "gemini-2.5-pro",
     Instruction = "You are a helpful assistant. Always Use the Vertex AI Search tool to find information by reforming user query cleanly.",
     Tools = [vertexSearchTool]
 });

@@ -247,13 +247,20 @@ public class MeaiLlm : BaseLlm
                     // Convert our Dictionary-based schema to a JsonElement for MEAI.
                     // Sanitize to ensure all 'type: object' nodes have 'properties'
                     // (required by the Gemini API's structured output validation).
-                    JsonElement schemaElement = default;
+                    JsonElement schemaElement;
                     if (declaration.Parameters != null)
                     {
                         var schemaJson = JsonSerializer.Serialize(declaration.Parameters);
                         using var doc = JsonDocument.Parse(schemaJson);
                         var sanitized = SanitizeObjectSchema(doc.RootElement);
                         schemaElement = JsonDocument.Parse(sanitized.GetRawText()).RootElement.Clone();
+                    }
+                    else
+                    {
+                        // No parameters — supply a valid empty object schema so the
+                        // downstream GenerativeAI library doesn't fail on default(JsonElement).
+                        using var emptyDoc = JsonDocument.Parse("""{"type":"object","properties":{}}""");
+                        schemaElement = emptyDoc.RootElement.Clone();
                     }
 
                     var aiDeclaration = AIFunctionFactory.CreateDeclaration(name, description, schemaElement);

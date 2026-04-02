@@ -21,6 +21,7 @@
 //   GOOGLE_CLOUD_LOCATION=us-central1
 // ============================================================================
 
+using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents;
@@ -28,13 +29,14 @@ using GoogleAdk.Core.Runner;
 using GoogleAdk.Dev;
 using GoogleAdk.Models.Gemini;
 
-var model = GeminiModelFactory.Create("gemini-2.5-flash");
+AdkEnv.Load();
+
 
 var billingAgent = new LlmAgent(new LlmAgentConfig
 {
     Name = "billing_agent",
     Description = "Handles billing questions: invoices, payments, refunds, subscription changes.",
-    Model = model,
+    Model = "gemini-2.5-flash",
     Instruction = """
         You are a billing specialist. Help users with invoices, payment methods,
         refunds, and subscription changes. Be precise with amounts and dates.
@@ -46,7 +48,7 @@ var techSupport = new LlmAgent(new LlmAgentConfig
 {
     Name = "tech_support",
     Description = "Handles technical issues: bugs, errors, setup problems, troubleshooting.",
-    Model = model,
+    Model = "gemini-2.5-flash",
     Instruction = """
         You are a technical support engineer. Help users debug errors, fix configuration
         issues, and troubleshoot problems. Ask clarifying questions about their environment.
@@ -59,7 +61,7 @@ var salesAgent = new LlmAgent(new LlmAgentConfig
 {
     Name = "sales_agent",
     Description = "Handles sales inquiries: pricing, product features, demos, upgrades.",
-    Model = model,
+    Model = "gemini-2.5-flash",
     Instruction = """
         You are a friendly sales representative. Answer questions about product features,
         pricing tiers, and help users choose the right plan. Be enthusiastic but honest.
@@ -72,7 +74,7 @@ var receptionist = new LlmAgent(new LlmAgentConfig
 {
     Name = "receptionist",
     Description = "Routes user requests to the appropriate specialist agent.",
-    Model = model,
+    Model = "gemini-2.5-flash",
     Instruction = """
         You are a helpful receptionist. Greet the user and determine which specialist
         can best help them:
@@ -89,61 +91,4 @@ var receptionist = new LlmAgent(new LlmAgentConfig
 var runner = new InMemoryRunner("sub-agent-transfer-sample", receptionist);
 
 
-var runWeb = args.Contains("--web");
-var enableA2a = args.Contains("--a2a");
-if (runWeb)
-{
-    await AdkWeb.RunAsync(receptionist, enableA2a: enableA2a);
-    return;
-}
-
-// Create a persistent session so conversation history is preserved across turns
-var session = await runner.SessionService.CreateSessionAsync(
-    new GoogleAdk.Core.Abstractions.Sessions.CreateSessionRequest
-    {
-        AppName = "sub-agent-transfer-sample",
-        UserId = "user-1",
-    });
-
-Console.WriteLine("╔══════════════════════════════════════════════════════════╗");
-Console.WriteLine("║  ADK C# — Sub-Agent Transfer Sample                     ║");
-Console.WriteLine("║  Chat with the receptionist — it routes to specialists. ║");
-Console.WriteLine("║  Try: billing, tech, or sales questions.                ║");
-Console.WriteLine("║  Type 'quit' to exit.                                   ║");
-Console.WriteLine("╚══════════════════════════════════════════════════════════╝");
-Console.WriteLine();
-
-while (true)
-{
-    Console.Write("You: ");
-    var input = Console.ReadLine();
-    if (string.IsNullOrWhiteSpace(input) || input.Equals("quit", StringComparison.OrdinalIgnoreCase))
-        break;
-
-    var userMessage = new Content
-    {
-        Role = "user",
-        Parts = new List<Part> { new() { Text = input } }
-    };
-
-    Console.WriteLine();
-    await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
-    {
-        var text = evt.Content?.Parts?.FirstOrDefault()?.Text;
-        if (text != null && evt.Partial != true)
-        {
-            Console.WriteLine($"[{evt.Author}]: {text}");
-            Console.WriteLine();
-        }
-
-        var calls = evt.GetFunctionCalls();
-        foreach (var call in calls)
-        {
-            if (call.Name == "transfer_to_agent")
-                Console.WriteLine($"  → Transferring to: {call.Args?.GetValueOrDefault("agentName")}");
-            else
-                Console.WriteLine($"  ⚡ {evt.Author} calling: {call.Name}");
-        }
-    }
-    Console.WriteLine(new string('─', 60));
-}
+await AdkWeb.RunAsync(receptionist);

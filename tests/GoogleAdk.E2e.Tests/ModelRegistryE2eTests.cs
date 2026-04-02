@@ -47,7 +47,7 @@ public class ModelRegistryE2eTests
         var agent = new LlmAgent(new LlmAgentConfig
         {
             Name = "registry-agent",
-            ModelName = "fake-1",
+            Model = "fake-1",
             Instruction = "test"
         });
 

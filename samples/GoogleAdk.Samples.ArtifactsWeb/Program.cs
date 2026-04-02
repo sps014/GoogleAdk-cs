@@ -100,7 +100,7 @@ public class Program
         var agent = new LlmAgent(new LlmAgentConfig
         {
             Name = "artifact_web_agent",
-            ModelName = "gemini-2.5-flash",
+            Model = "gemini-2.5-flash",
             Instruction = "You are a summarization assistant. When asked to summarize, use the ReadTextFile tool to read a file (use 'input.txt' as a default if none is provided), summarize its contents concisely, and use the WriteTextFile tool to save the summary to a new file. You can choose the output filename yourself without asking the user.",
             Tools = [
                 ArtifactsWebTools.ReadTextFileTool,

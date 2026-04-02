@@ -35,8 +35,10 @@ using GoogleAdk.Models.Gemini;
 using GoogleAdk.Samples.Orchestration;
 using GoogleAdk.Tools.Mcp;
 
+AdkEnv.Load();
+
 // ── Create a Gemini model from environment variables ───────────────────────
-var model = GeminiModelFactory.Create("gemini-2.5-flash");
+var model = "gemini-2.5-flash";
 
 // Tools are auto-generated from [FunctionTool] methods in SampleTools.
 // No manual schema or boilerplate needed — just use SampleTools.XxxTool.

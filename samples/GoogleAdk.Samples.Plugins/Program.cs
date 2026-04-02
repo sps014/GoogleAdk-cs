@@ -9,6 +9,7 @@
 //   4. PluginManager — registering multiple plugins
 // ============================================================================
 
+using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
@@ -17,6 +18,8 @@ using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Plugins;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Samples.Plugins;
+
+AdkEnv.Load();
 
 Console.WriteLine("=== Plugins Sample ===\n");
 
