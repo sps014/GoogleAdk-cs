@@ -24,12 +24,17 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # First, restore the entire solution so all project.assets.json files are generated
       - name: Restore dependencies
-        run: dotnet restore src/GoogleAdk/GoogleAdk.csproj
+        run: dotnet restore GoogleAdk.slnx
+
+      - name: Build
+        # Explicitly build the solution first to guarantee all outputs and assets are fully populated
+        run: dotnet build GoogleAdk.slnx --configuration Release --no-restore
 
       - name: Pack
-        # GoogleAdk pack bundles satellite assemblies via targets that depend on Build; --no-build is not supported (NETSDK1085).
-        run: dotnet pack src/GoogleAdk/GoogleAdk.csproj --configuration Release --output ./artifacts -p:PackageVersion=${{ github.event.inputs.version }}
+        # Pack the umbrella project. No --no-build flag because MSBuild targets still run.
+        run: dotnet pack src/GoogleAdk/GoogleAdk.csproj --configuration Release --no-restore --output ./artifacts -p:PackageVersion=${{ github.event.inputs.version }}
 
       - name: Publish to NuGet
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
