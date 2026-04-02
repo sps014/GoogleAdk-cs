@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using System.Diagnostics;
 using GoogleAdk.Core.Abstractions.Artifacts;
 using GoogleAdk.Core.Artifacts;
+using Spectre.Console;
 
 namespace GoogleAdk.Dev;
 
@@ -25,7 +26,7 @@ public static class AdkWeb
         IBaseArtifactService? artifactService = null,
         int port = 8080, 
         string host = "localhost", 
-        bool serveUi = true, 
+        bool showAdkWebUI = true, 
         bool enableA2a = false)
     {
         var agentLoader = new AgentLoader(".");
@@ -41,6 +42,9 @@ public static class AdkWeb
         builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService, artifactService));
         builder.Services.AddSingleton(new InMemoryTraceCollector());
 
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
@@ -48,12 +52,16 @@ public static class AdkWeb
         });
 
         var app = builder.Build();
+        
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        
         app.UseCors();
         app.MapAdkApi();
         if (enableA2a)
             app.MapA2aApi();
 
-        if (serveUi)
+        if (showAdkWebUI)
         {
             var embeddedProvider = new EmbeddedFileProvider(
                 typeof(AdkWeb).Assembly, "GoogleAdk.Dev.wwwroot");
@@ -75,14 +83,30 @@ public static class AdkWeb
         var url = $"http://{host}:{port}";
         app.Urls.Add(url);
 
-        Console.WriteLine();
-        Console.WriteLine($"  ADK Dev Server running at {url}");
-        Console.WriteLine($"  Dev UI: {url}/dev-ui");
-        Console.WriteLine($"  Agent: {rootAgent.Name}");
+        var grid = new Grid()
+            .AddColumn(new GridColumn().NoWrap().PadRight(2))
+            .AddColumn();
+
+        grid.AddRow("[bold cyan]Server[/]", $"[link={url}]{url}[/]");
+        
+        if (showAdkWebUI)
+            grid.AddRow("[bold green]Dev UI[/]", $"[link={url}/dev-ui]{url}/dev-ui[/]");
+            
+        grid.AddRow("[bold yellow]Swagger UI[/]", $"[link={url}/swagger]{url}/swagger[/]");
+        grid.AddRow("[bold magenta]Agent[/]", rootAgent.Name);
+        
         if (enableA2a)
-            Console.WriteLine($"  A2A: {url}/a2a/{rootAgent.Name}/");
-        Console.WriteLine($"  Press Ctrl+C to stop.");
-        Console.WriteLine();
+            grid.AddRow("[bold blue]A2A[/]", $"[link={url}/a2a/{rootAgent.Name}/]{url}/a2a/{rootAgent.Name}/[/]");
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(
+            new Panel(grid)
+                .Header("[bold white]ADK Dev Server[/]")
+                .Border(BoxBorder.Rounded)
+                .Expand()
+        );
+        AnsiConsole.MarkupLine("[dim italic]Press Ctrl+C to stop.[/]");
+        AnsiConsole.WriteLine();
 
         var shutdownToken = DevServerLifetime.Register(app);
         await app.RunAsync(shutdownToken);
