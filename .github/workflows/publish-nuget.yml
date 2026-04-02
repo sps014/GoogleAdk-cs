@@ -25,11 +25,11 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore GoogleAdk/src/GoogleAdk/GoogleAdk.csproj
+        run: dotnet restore src/GoogleAdk/GoogleAdk.csproj
 
       - name: Pack
         # GoogleAdk pack bundles satellite assemblies via targets that depend on Build; --no-build is not supported (NETSDK1085).
-        run: dotnet pack GoogleAdk/src/GoogleAdk/GoogleAdk.csproj --configuration Release --output ./artifacts -p:PackageVersion=${{ github.event.inputs.version }}
+        run: dotnet pack src/GoogleAdk/GoogleAdk.csproj --configuration Release --output ./artifacts -p:PackageVersion=${{ github.event.inputs.version }}
 
       - name: Publish to NuGet
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
