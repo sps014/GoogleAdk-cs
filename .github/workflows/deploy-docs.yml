@@ -4,8 +4,8 @@ on:
   push:
     branches: ["main"]
     paths:
-      - 'GoogleAdk/docs/**'
-      - 'GoogleAdk/mkdocs.yml'
+      - 'docs/**'
+      - 'mkdocs.yml'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
@@ -37,7 +37,6 @@ jobs:
           
       - name: Build with MkDocs
         run: |
-          cd GoogleAdk
           mkdocs build
           
       - name: Setup Pages
@@ -47,7 +46,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./GoogleAdk/site
+          path: ./site
 
   deploy:
     environment:
