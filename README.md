@@ -23,13 +23,52 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 
 ## ✨ Key Features
 
-- **Rich Tool Ecosystem**: Utilize pre-built tools, custom functions, OpenAPI
-  specs, or integrate existing tools to give agents diverse capabilities, all
-  for tight integration with the Google ecosystem.
-- **Code-First Development**: Define agent logic, tools, and orchestration
-  directly in C# for ultimate flexibility, testability, and versioning.
-- **Modular Multi-Agent Systems**: Design scalable applications by composing
-  multiple specialized agents into flexible hierarchies.
+- **ADK Web (development server & UI)**: Run agents with the embedded dev UI,
+  REST/WebSocket APIs, Swagger, and optional static file hosting—via
+  `AdkWeb.RunAsync`, the CLI (`GoogleAdk.ApiServer`), or your own host. See
+  [Running agents](docs/running-agents.md).
+- **A2A (client + server)**: **Client** types in `src/GoogleAdk.Core/A2a`
+  (`A2aClient`, `A2aRemoteAgent`, streaming/event helpers) for calling remote
+  agents. **Server** endpoints via `MapA2aApi()` on the API host so your agent
+  speaks the [A2A protocol](https://github.com/google/A2A/). Enable A2A on the
+  dev server with `enableA2a: true` in `AdkWeb.RunAsync` or the CLI `--a2a`
+  flag. Details: [docs/a2a.md](docs/a2a.md).
+- **Planning**: Attach an `IPlanner` to `LlmAgent` (e.g. built-in and ReAct-style
+  planners) with natural-language planning processors in the LLM pipeline. See
+  [docs/planning.md](docs/planning.md).
+- **Prompt / context caching**: `ContextCacheConfig` on agents and apps, with
+  Gemini-backed implicit caching via `GoogleAdk.Models.Gemini` and
+  `ContextCacheRequestProcessor`. See [docs/caching.md](docs/caching.md).
+- **C# tools & source generation**: Mark static/instance methods with
+  `[FunctionTool]`; `GoogleAdk.SourceGenerators` emits partial classes with
+  schema-backed `FunctionTool` instances (XML docs required for descriptions).
+  See [docs/tools.md](docs/tools.md).
+- **MCP (Model Context Protocol)**: `GoogleAdk.Tools.Mcp` provides `McpToolset`
+  for stdio and HTTP MCP servers, dynamic tool discovery, and integration with
+  `LlmAgent` toolsets. See [docs/mcp.md](docs/mcp.md).
+- **OpenAPI-backed tools**: Generate tools from OpenAPI documents with
+  `GoogleAdk.Tools.OpenApi`. Sample: `samples/GoogleAdk.Samples.OpenApi`.
+- **Model backends**: **Gemini** (`GoogleAdk.Models.Gemini`) and **MEAI**
+  (`GoogleAdk.Models.Meai`) for providers such as Ollama and other MEAI-compatible
+  models. See [docs/models.md](docs/models.md).
+- **Sessions & persistence**: In-memory sessions in core; optional **EF Core**
+  session storage in `GoogleAdk.Sessions.EfCore`.
+- **Evaluation & optimization**: `GoogleAdk.Evaluation` (datasets, inference,
+  LLM-as-judge scoring) and `GoogleAdk.Optimization` for systematic prompt/agent
+  improvement. See [docs/evaluation-optimization.md](docs/evaluation-optimization.md).
+- **Rich built-in tools & Google integrations**: Search, maps, Vertex AI Search,
+  Discovery Engine, URL context, code execution, artifacts, sub-agents, human-in-the-loop
+  confirmations, and more—see [docs/tools.md](docs/tools.md) and
+  [docs/features.md](docs/features.md).
+- **Orchestration & processors**: `SequentialAgent`, `ParallelAgent`, `LoopAgent`,
+  transfer-to-agent, and a configurable LLM request/response processor pipeline
+  (instructions, code execution, output schema, context compaction, etc.). See
+  [docs/orchestration.md](docs/orchestration.md).
+- **Plugins, telemetry, streaming**: Hook lifecycle with plugins, OpenTelemetry-style
+  tracing in the API server, and streaming event flows. See [docs/plugins.md](docs/plugins.md),
+  [docs/streaming.md](docs/streaming.md).
+- **Code-First Development**: Define agent logic, tools, and orchestration in C#
+  for flexibility, testability, and versioning.
 
 ## 🚀 Installation
 
@@ -39,8 +78,8 @@ This repo is currently built from source. Package publishing is coming soon.
 
 For building, evaluating, and deploying agents, follow the docs and samples:
 
-- **[Documentation](https://google.github.io/adk-docs)**
-- **[Samples](https://github.com/google/adk-samples)**
+- **[In-repo docs](docs/index.md)** (feature guides for this .NET port)
+- **[Samples](https://github.com/sps014/GoogleAdk-cs/tree/main/samples)**
 
 ## 🏁 Feature Highlight
 
@@ -69,14 +108,33 @@ evaluate, debug, and showcase your agent(s).
 
 ### Evaluate Agents
 
-Coming soon...
+Use `GoogleAdk.Evaluation` and `GoogleAdk.Optimization` for eval sets, inference
+runs, scoring, and prompt tuning. See
+[docs/evaluation-optimization.md](docs/evaluation-optimization.md) and sample
+`GoogleAdk.Samples.EvalOptimize`.
 
 ## 🤖 A2A and ADK integration
 
-For remote agent-to-agent communication, ADK integrates with the
-[A2A protocol](https://github.com/google/A2A/). See the A2A client/server
-components under `src/GoogleAdk.Core/A2a` and the E2E tests under
-`tests/GoogleAdk.E2e.Tests`.
+Remote agent-to-agent communication uses the
+[A2A protocol](https://github.com/google/A2A/). **Client** code lives under
+`src/GoogleAdk.Core/A2a`; **server** wiring is in `GoogleAdk.ApiServer` (`MapA2aApi`).
+End-to-end coverage is in `tests/GoogleAdk.E2e.Tests`. See [docs/a2a.md](docs/a2a.md).
+
+### Source layout (`src/`)
+
+| Package | Role |
+|--------|------|
+| `GoogleAdk.Core.Abstractions` | Shared contracts (sessions, tools attributes, models). |
+| `GoogleAdk.Core` | Agents, runner, built-in tools, A2A client, planning, plugins, sessions (in-memory). |
+| `GoogleAdk.Models.Gemini` | Gemini / GenAI integration and context cache management. |
+| `GoogleAdk.Models.Meai` | MEAI-based models (e.g. Ollama). |
+| `GoogleAdk.ApiServer` | ADK Web host, ADK REST/WebSocket API, A2A endpoints, CLI. |
+| `GoogleAdk.SourceGenerators` | `[FunctionTool]` incremental generator. |
+| `GoogleAdk.Tools.Mcp` | MCP client toolsets. |
+| `GoogleAdk.Tools.OpenApi` | OpenAPI → tools. |
+| `GoogleAdk.Sessions.EfCore` | EF Core session persistence. |
+| `GoogleAdk.Evaluation` | Eval sets and judging workflows. |
+| `GoogleAdk.Optimization` | Optimization helpers for agents/prompts. |
 
 ## 🏗️ Building the Project
 
@@ -88,7 +146,7 @@ To set up the project and build it from source, follow these steps:
    dotnet restore "GoogleAdk/GoogleAdk.slnx"
    ```
 
-1. **Build the project**:
+2. **Build the project**:
 
    ```bash
    dotnet build "GoogleAdk/GoogleAdk.slnx"
