@@ -124,21 +124,6 @@ Remote agent-to-agent communication uses the
 `src/GoogleAdk.Core/A2a`; **server** wiring is in `GoogleAdk.ApiServer` (`MapA2aApi`).
 End-to-end coverage is in `tests/GoogleAdk.E2e.Tests`. See [docs/a2a.md](docs/a2a.md).
 
-### Source layout (`src/`)
-
-| Package | Role |
-|--------|------|
-| `GoogleAdk.Core.Abstractions` | Shared contracts (sessions, tools attributes, models). |
-| `GoogleAdk.Core` | Agents, runner, built-in tools, A2A client, planning, plugins, sessions (in-memory). |
-| `GoogleAdk.Models.Gemini` | Gemini / GenAI integration and context cache management. |
-| `GoogleAdk.Models.Meai` | MEAI-based models (e.g. Ollama). |
-| `GoogleAdk.ApiServer` | ADK Web host, ADK REST/WebSocket API, A2A endpoints, CLI. |
-| `GoogleAdk.SourceGenerators` | `[FunctionTool]` incremental generator. |
-| `GoogleAdk.Tools.Mcp` | MCP client toolsets. |
-| `GoogleAdk.Tools.OpenApi` | OpenAPI → tools. |
-| `GoogleAdk.Sessions.EfCore` | EF Core session persistence. |
-| `GoogleAdk.Evaluation` | Eval sets and judging workflows. |
-| `GoogleAdk.Optimization` | Optimization helpers for agents/prompts. |
 
 ## 🏗️ Building the Project
 
@@ -178,13 +163,7 @@ If you contribute code, your contributions may be subject to the contributor lic
 
 ## Preview
 
-This feature is subject to the "Pre-GA Offerings Terms" in the General Service
-Terms section of the
-[Service Specific Terms](https://cloud.google.com/terms/service-terms#1).
-Pre-GA features are available "as is" and might have limited support. For more
-information, see the
-[launch stage descriptions](https://cloud.google.com/products?hl=en#product-launch-stages).
-
+This Adk port is in preview, APIs may change or break. Please do not use in production systems.
 ---
 
 _Happy Agent Building!_
