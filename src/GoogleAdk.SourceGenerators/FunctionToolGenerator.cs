@@ -31,7 +31,10 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         isEnabledByDefault: true);
 
     private static readonly DiagnosticDescriptor InvalidReturnTypeError = new DiagnosticDescriptor(
+#pragma warning disable RS2008 // Enable analyzer release tracking
+
         id: "ADK002",
+
         title: "Invalid FunctionTool Return Type",
         messageFormat: "Method '{0}' is marked as [FunctionTool] but returns '{1}'. Tools must return a value (no void/Task-only).",
         category: "Usage",
@@ -41,17 +44,23 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor RequireConfirmationNeedsContextError = new DiagnosticDescriptor(
         id: "ADK003",
         title: "RequireConfirmation Requires AgentContext",
+#pragma warning disable RS1032 // Define diagnostic message correctly
+
         messageFormat: "Method '{0}' sets RequireConfirmation=true but does not accept an AgentContext parameter.",
+#pragma warning restore RS1032 // Define diagnostic message correctly
+
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+        #pragma warning restore RS2008 // Enable analyzer release tracking
+
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var extracted = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 AttributeFullName,
-                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                predicate: static (node, _) => node is MethodDeclarationSyntax || node is LocalFunctionStatementSyntax,
                 transform: static (ctx, ct) => ExtractModel(ctx, ct));
 
         // Report diagnostics
@@ -84,9 +93,6 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         if (ctx.TargetSymbol is not IMethodSymbol method)
             return new ExtractionResult(null, ImmutableArray<Diagnostic>.Empty);
 
-        if (method.ContainingType is null)
-            return new ExtractionResult(null, ImmutableArray<Diagnostic>.Empty);
-
         // Read attribute properties
         var attr = ctx.Attributes.First(a =>
             a.AttributeClass?.ToDisplayString() == AttributeFullName);
@@ -110,49 +116,48 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
         // Return type validation (must return a value, not void or Task)
         if (IsInvalidReturnType(method))
         {
-            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() 
+                           ?? (ctx.TargetNode as LocalFunctionStatementSyntax)?.Identifier.GetLocation() 
+                           ?? ctx.TargetNode.GetLocation();
             var returnType = method.ReturnType.ToDisplayString();
             var diag = Diagnostic.Create(InvalidReturnTypeError, location, method.Name, returnType);
             return new ExtractionResult(null, ImmutableArray.Create(diag));
         }
 
-        // XML doc extraction (reads directly from syntax tree to avoid requiring <GenerateDocumentationFile>true</GenerateDocumentationFile>)
+        // XML doc extraction
         string description = "";
         var paramDescriptions = new Dictionary<string, string>();
 
-        if (ctx.TargetNode is MethodDeclarationSyntax methodSyntax)
+        var leadingTriviaStr = ctx.TargetNode.GetLeadingTrivia().ToFullString();
+        var rawLines = leadingTriviaStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var sbDoc = new StringBuilder();
+        sbDoc.AppendLine("<root>");
+        int docLinesCount = 0;
+        foreach (var line in rawLines)
         {
-            var leadingTriviaStr = methodSyntax.GetLeadingTrivia().ToFullString();
-            var rawLines = leadingTriviaStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            var sbDoc = new StringBuilder();
-            sbDoc.AppendLine("<root>");
-            int docLinesCount = 0;
-            foreach (var line in rawLines)
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("///"))
             {
-                var trimmed = line.TrimStart();
-                if (trimmed.StartsWith("///"))
-                {
-                    sbDoc.AppendLine(trimmed.Substring(3).TrimStart());
-                    docLinesCount++;
-                }
+                sbDoc.AppendLine(trimmed.Substring(3).TrimStart());
+                docLinesCount++;
             }
-            sbDoc.AppendLine("</root>");
+        }
+        sbDoc.AppendLine("</root>");
 
-            if (docLinesCount > 0)
+        if (docLinesCount > 0)
+        {
+            try
             {
-                try
+                var doc = XDocument.Parse(sbDoc.ToString());
+                description = doc.Descendants("summary").FirstOrDefault()?.Value.Trim() ?? "";
+                foreach (var p in doc.Descendants("param"))
                 {
-                    var doc = XDocument.Parse(sbDoc.ToString());
-                    description = doc.Descendants("summary").FirstOrDefault()?.Value.Trim() ?? "";
-                    foreach (var p in doc.Descendants("param"))
-                    {
-                        var pName = p.Attribute("name")?.Value;
-                        if (pName != null)
-                            paramDescriptions[pName] = p.Value.Trim();
-                    }
+                    var pName = p.Attribute("name")?.Value;
+                    if (pName != null)
+                        paramDescriptions[pName] = p.Value.Trim();
                 }
-                catch { /* malformed XML – ignore */ }
             }
+            catch { /* malformed XML – ignore */ }
         }
 
         // Parameters (skip CancellationToken, AgentContext)
@@ -185,11 +190,44 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             p.Type.ToDisplayString() == "GoogleAdk.Core.Agents.AgentContext");
 
         // Containing type info
-        string containingNamespace = method.ContainingType.ContainingNamespace?.IsGlobalNamespace == true 
+        string containingNamespace = method.ContainingType?.ContainingNamespace?.IsGlobalNamespace == true 
             ? "" 
-            : method.ContainingType.ContainingNamespace?.ToDisplayString() ?? "";
-        string containingTypeName = method.ContainingType.Name;
-        bool isContainingTypeStatic = method.ContainingType.IsStatic;
+            : method.ContainingType?.ContainingNamespace?.ToDisplayString() ?? "";
+        string containingTypeName = method.ContainingType?.Name ?? "";
+        bool isContainingTypeStatic = method.ContainingType?.IsStatic ?? false;
+
+        bool isLocalFunction = ctx.TargetNode is LocalFunctionStatementSyntax;
+        string? localFunctionSource = null;
+        List<string> usings = new();
+
+        if (isLocalFunction)
+        {
+            var localSyntax = (LocalFunctionStatementSyntax)ctx.TargetNode;
+            
+            string modifiers = "internal static";
+            if (isAsync) modifiers += " async";
+
+            string retType = localSyntax.ReturnType.ToString();
+            string identifier = method.Name;
+            string typeParameters = localSyntax.TypeParameterList?.ToString() ?? "";
+            string paramList = localSyntax.ParameterList.ToString();
+            string body = localSyntax.Body?.ToFullString() ?? localSyntax.ExpressionBody?.ToFullString() + ";";
+            
+            localFunctionSource = $"{modifiers} {retType} {identifier}{typeParameters}{paramList}\n{body}";
+
+            usings = ctx.TargetNode.SyntaxTree.GetRoot()
+                .DescendantNodes()
+                .OfType<UsingDirectiveSyntax>()
+                .Select(u => u.ToFullString())
+                .ToList();
+            
+            containingTypeName = "Program";
+            isContainingTypeStatic = false;
+        }
+        else if (method.ContainingType is null)
+        {
+            return new ExtractionResult(null, ImmutableArray<Diagnostic>.Empty);
+        }
 
         var model = new ToolModel
         {
@@ -204,19 +242,26 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             ContainingNamespace = containingNamespace,
             ContainingTypeName = containingTypeName,
             IsContainingTypeStatic = isContainingTypeStatic,
-            IsStatic = method.IsStatic,
+            IsStatic = method.IsStatic || isLocalFunction,
+            IsLocalFunction = isLocalFunction,
+            LocalFunctionSource = localFunctionSource,
+            Usings = usings
         };
 
         if (requireConfirmation && !hasContext)
         {
-            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() 
+                           ?? (ctx.TargetNode as LocalFunctionStatementSyntax)?.Identifier.GetLocation() 
+                           ?? ctx.TargetNode.GetLocation();
             var diag = Diagnostic.Create(RequireConfirmationNeedsContextError, location, method.Name);
             return new ExtractionResult(null, ImmutableArray.Create(diag));
         }
 
         if (string.IsNullOrWhiteSpace(description))
         {
-            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() ?? ctx.TargetNode.GetLocation();
+            var location = (ctx.TargetNode as MethodDeclarationSyntax)?.Identifier.GetLocation() 
+                           ?? (ctx.TargetNode as LocalFunctionStatementSyntax)?.Identifier.GetLocation() 
+                           ?? ctx.TargetNode.GetLocation();
             var diag = Diagnostic.Create(MissingDocError, location, method.Name);
             return new ExtractionResult(model, ImmutableArray.Create(diag));
         }
@@ -264,6 +309,25 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using System.Threading.Tasks;");
             sb.AppendLine();
+            
+            var allUsings = group.SelectMany(t => t.Usings)
+                .Select(u => u.Trim())
+                .Where(u => u != "using GoogleAdk.Core.Tools;" && 
+                            u != "using GoogleAdk.Core.Agents;" && 
+                            u != "using GoogleAdk.Core.Abstractions.Tools;" && 
+                            u != "using System.Collections.Generic;" && 
+                            u != "using System.Threading.Tasks;")
+                .Distinct()
+                .ToList();
+            foreach (var u in allUsings)
+            {
+                sb.AppendLine(u);
+            }
+            if (allUsings.Any())
+            {
+                sb.AppendLine();
+            }
+
             if (!string.IsNullOrEmpty(first.ContainingNamespace))
             {
                 sb.AppendLine($"namespace {first.ContainingNamespace};");
@@ -305,6 +369,22 @@ public sealed class FunctionToolGenerator : IIncrementalGenerator
 
             sb.AppendLine("        };");
             sb.AppendLine("    }");
+
+            // Emit the local functions themselves
+            foreach (var tool in group)
+            {
+                if (tool.IsLocalFunction && tool.LocalFunctionSource != null)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"    // Copied from top-level/local function {tool.MethodName}");
+                    var lines = tool.LocalFunctionSource.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
+                    foreach (var line in lines)
+                    {
+                        sb.AppendLine($"    {line}");
+                    }
+                }
+            }
+
             sb.AppendLine("}");
 
             var hintName = $"{first.ContainingTypeName}.FunctionTools.g.cs";
@@ -587,6 +667,9 @@ internal sealed class ToolModel : IEquatable<ToolModel>
     public string ContainingNamespace { get; set; } = "";
     public string ContainingTypeName { get; set; } = "";
     public bool IsContainingTypeStatic { get; set; }
+    public bool IsLocalFunction { get; set; }
+    public string? LocalFunctionSource { get; set; }
+    public List<string> Usings { get; set; } = new();
 
     public bool Equals(ToolModel? other)
     {

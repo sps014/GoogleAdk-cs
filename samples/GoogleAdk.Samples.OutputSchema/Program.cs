@@ -7,7 +7,6 @@ using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
-using GoogleAdk.Samples.OutputSchema;
 
 Console.WriteLine("=== Output Schema Sample ===\n");
 
@@ -18,10 +17,6 @@ var agent = new LlmAgent(new LlmAgentConfig
     Name = "schema",
     Model = "gemini-2.5-flash",
     Instruction = "Return a JSON response that matches the schema using set_model_response.",
-    Tools =
-    [
-        SampleSchemaTools.NoopTool
-    ],
     OutputSchema = typeof(SchemaOutput)
 });
 

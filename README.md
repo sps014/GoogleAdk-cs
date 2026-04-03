@@ -93,13 +93,31 @@ For building, evaluating, and deploying agents, follow the docs and samples:
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Tools;
 
+//Load env variables
+AdkEnv.Load();
+
+/// <summary>Gets the current weather for a city. Returns temperature and conditions.</summary>
+/// <param name="city">The city name</param>
+[FunctionTool]
+static object? GetWeather(string city)
+{
+    return new Dictionary<string, object?>
+    {
+        ["city"] = city,
+        ["temperature_celsius"] = city.Contains("New York", StringComparison.OrdinalIgnoreCase) ? 22 : 18,
+        ["condition"] = city.Contains("London", StringComparison.OrdinalIgnoreCase) ? "Rainy" : "Sunny",
+        ["humidity_percent"] = 65,
+        ["wind_kph"] = 12,
+    };
+}
+
 var rootAgent = new LlmAgent(new LlmAgentConfig
 {
     Name = "search_assistant",
     Description = "An assistant that can search the web.",
     Model = "gemini-2.5-flash",
-    Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed.",
-    Tools = [ToolRegistry.GOOGLE_SEARCH],
+    Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed. If User asks about weather use the GetWeather tool",
+    Tools = [ToolRegistry.GOOGLE_SEARCH, GetWeather],
 });
 ```
 

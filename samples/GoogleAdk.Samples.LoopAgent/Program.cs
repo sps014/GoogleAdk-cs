@@ -5,6 +5,7 @@ using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
 using GoogleAdk.ApiServer;
 using GoogleAdk.Models.Gemini;
+using GoogleAdk.Core.Abstractions.Tools;
 
 // Load environment variables (e.g. GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION)
 AdkEnv.Load();
@@ -51,7 +52,7 @@ var critic = new LlmAgent(new LlmAgentConfig
         IMPORTANT: When you approve (score >= 8), you MUST call the `escalate` tool to 
         end the review loop.
         """,
-    Tools = [ GoogleAdk.Samples.LoopAgent.LoopTools.EscalateTool ],
+    Tools = [EscalateTool],
 });
 
 // =========================================================================================
@@ -64,7 +65,7 @@ var refinementLoop = new LoopAgent(new LoopAgentConfig
     Name = "refinement_loop",
     Description = "Iteratively refines content through drafting and critique.",
     MaxIterations = 5,
-    SubAgents = [ drafter, critic ],
+    SubAgents = [drafter, critic],
 });
 
 // =========================================================================================
@@ -111,18 +112,18 @@ static async Task RunConsoleAppAsync(LoopAgent refinementLoop)
         Console.ForegroundColor = ConsoleColor.White;
         Console.Write("\nEnter a topic (or 'quit'): ");
         var topic = Console.ReadLine();
-        
+
         if (string.IsNullOrWhiteSpace(topic) || topic.Equals("quit", StringComparison.OrdinalIgnoreCase))
             break;
 
         var userMessage = new Content
         {
             Role = "user",
-            Parts = [ new() { Text = topic } ]
+            Parts = [new() { Text = topic }]
         };
 
         Console.WriteLine("\n[Starting Iterative Loop...]\n");
-        
+
         int currentIteration = 0;
         string? lastAuthor = null;
 
@@ -145,10 +146,10 @@ static async Task RunConsoleAppAsync(LoopAgent refinementLoop)
             var isDrafter = evt.Author == "drafter";
             Console.ForegroundColor = isDrafter ? ConsoleColor.Cyan : ConsoleColor.Magenta;
             var emoji = isDrafter ? "✏️" : "🔍";
-            
+
             Console.WriteLine($"  {emoji} [{evt.Author.ToUpper()}]:");
             Console.WriteLine($"  {text}\n");
-            
+
             lastAuthor = evt.Author;
 
             // Check if the loop has been successfully completed
@@ -158,8 +159,21 @@ static async Task RunConsoleAppAsync(LoopAgent refinementLoop)
                 Console.WriteLine("  ✅ Critic approved — loop complete!");
             }
         }
-        
+
         Console.ResetColor();
         Console.WriteLine(new string('─', 64));
     }
+}
+
+
+/// <summary>
+/// A tool that sets the escalate flag when the critic is satisfied,
+/// causing the LoopAgent to break its iteration cycle.
+/// </summary>
+/// <param name="context">Agent context for setting escalate.</param>
+[FunctionTool(Name = "escalate")]
+static object? Escalate(AgentContext context)
+{
+    context.EventActions.Escalate = true;
+    return new { status = "escalated", message = "Review loop completed." };
 }

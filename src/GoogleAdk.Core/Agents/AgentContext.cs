@@ -1,5 +1,6 @@
 using GoogleAdk.Core.Abstractions.Auth;
 using GoogleAdk.Core.Abstractions.Events;
+using GoogleAdk.Core.Abstractions.Memory;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Auth;
 
@@ -94,4 +95,23 @@ public class AgentContext
 
         return await InvocationContext.ArtifactService.LoadArtifactAsync(req);
     }
+
+    /// <summary>
+    /// Lists all artifact keys (filenames) for the current user and session.
+    /// </summary>
+    public async Task<List<string>> ListArtifactsAsync()
+    {
+        if (InvocationContext.ArtifactService == null)
+            throw new InvalidOperationException("ArtifactService is not configured.");
+
+        var req = new GoogleAdk.Core.Abstractions.Artifacts.ListArtifactKeysRequest
+        {
+            AppName = AppName,
+            UserId = UserId,
+            SessionId = Session.Id
+        };
+
+        return await InvocationContext.ArtifactService.ListArtifactKeysAsync(req);
+    }
+
 }

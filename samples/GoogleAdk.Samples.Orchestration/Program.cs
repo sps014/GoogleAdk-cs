@@ -28,11 +28,11 @@
 using GoogleAdk.Core;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
+using GoogleAdk.Core.Abstractions.Tools;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Tools;
 using GoogleAdk.Models.Gemini;
-using GoogleAdk.Samples.Orchestration;
 using GoogleAdk.Tools.Mcp;
 
 AdkEnv.Load();
@@ -56,7 +56,7 @@ var researchAgent = new LlmAgent(new LlmAgentConfig
         news headlines, and any calculations needed. Present your findings as structured
         bullet points. Be factual and cite your sources (tool names).
         """,
-    Tools = new List<IBaseTool> { SampleTools.GetWeatherTool, SampleTools.SearchNewsTool, SampleTools.CalculateTool },
+    Tools = new List<IBaseTool> { GetWeatherTool, SearchNewsTool, CalculateTool },
 });
 
 var analystAgent = new LlmAgent(new LlmAgentConfig
@@ -135,8 +135,8 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
     Tools = new List<IBaseTool>
     {
         new AgentTool(pipeline),
-        SampleTools.GetWeatherTool,   // Also available directly for quick queries
-        SampleTools.CalculateTool,    // Also available directly for quick queries
+        GetWeatherTool,   // Also available directly for quick queries
+        CalculateTool,    // Also available directly for quick queries
     },
 });
 
@@ -209,3 +209,50 @@ if (mcpToolset != null)
     await mcpToolset.DisposeAsync();
 
 Console.WriteLine("Goodbye!");
+
+
+
+/// <summary>Gets the current weather for a city. Returns temperature and conditions.</summary>
+/// <param name="city">The city name</param>
+[FunctionTool]
+static object? GetWeather(string city)
+{
+    return new Dictionary<string, object?>
+    {
+        ["city"] = city,
+        ["temperature_celsius"] = city.Contains("New York", StringComparison.OrdinalIgnoreCase) ? 22 : 18,
+        ["condition"] = city.Contains("London", StringComparison.OrdinalIgnoreCase) ? "Rainy" : "Sunny",
+        ["humidity_percent"] = 65,
+        ["wind_kph"] = 12,
+    };
+}
+
+/// <summary>Searches for recent news headlines about a topic.</summary>
+/// <param name="topic">The topic to search news for</param>
+[FunctionTool]
+static object? SearchNews(string topic)
+{
+    var headlines = new[]
+    {
+            $"Breaking: New developments in {topic} sector show promising growth",
+            $"Analysis: How {topic} is reshaping the global economy in 2025",
+            $"Expert opinion: The future of {topic} according to industry leaders",
+        };
+    return new { topic, headlines, source = "simulated-news-api" };
+}
+
+/// <summary>Performs basic math calculations. Supports +, -, *, /.</summary>
+/// <param name="expression">A math expression like '2 + 3 * 4'</param>
+[FunctionTool]
+static object? Calculate(string expression)
+{
+    try
+    {
+        var result = new System.Data.DataTable().Compute(expression, null);
+        return new { expression, result = result?.ToString() };
+    }
+    catch
+    {
+        return new { expression, error = "Invalid expression" };
+    }
+}

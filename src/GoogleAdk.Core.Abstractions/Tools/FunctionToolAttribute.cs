@@ -1,7 +1,7 @@
 namespace GoogleAdk.Core.Abstractions.Tools;
 
 /// <summary>
-/// Marks a static method as an ADK FunctionTool. A source generator will
+/// Marks a static method or a top-level/local function as an ADK FunctionTool. A source generator will
 /// create the <c>FunctionTool</c> instance automatically, using XML doc
 /// comments for the description and parameter metadata.
 /// </summary>

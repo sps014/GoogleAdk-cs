@@ -32,7 +32,7 @@
     <Project Path="samples/GoogleAdk.Samples.ParallelAgent/GoogleAdk.Samples.ParallelAgent.csproj" />
     <Project Path="samples/GoogleAdk.Samples.LoopAgent/GoogleAdk.Samples.LoopAgent.csproj" />
     <Project Path="samples/GoogleAdk.Samples.SubAgents/GoogleAdk.Samples.SubAgents.csproj" />
-    <Project Path="samples/GoogleAdk.Samples.Combined/GoogleAdk.Samples.Combined.csproj" />
+    <Project Path="samples/GoogleAdk.Samples.MultiOrchestration/GoogleAdk.Samples.MultiOrchestration.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Auth/GoogleAdk.Samples.Auth.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Plugins/GoogleAdk.Samples.Plugins.csproj" />
     <Project Path="samples/GoogleAdk.Samples.ArtifactsWeb/GoogleAdk.Samples.ArtifactsWeb.csproj" />
