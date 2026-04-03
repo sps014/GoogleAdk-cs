@@ -59,6 +59,7 @@ nav:
     - Code Execution: code-execution.md
     - Model Context Protocol (MCP): mcp.md
     - Artifacts: artifacts.md
+    - Artifact Handling: artifact-handling.md
   - Models & Connectivity:
     - Models: models.md
     - Agent-to-Agent (A2A): a2a.md

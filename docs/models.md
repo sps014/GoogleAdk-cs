@@ -5,6 +5,7 @@ The ADK heavily abstracts the underlying Large Language Model (LLM) implementati
 ## Supported Providers
 
 - **Google Gemini**: First-class native support via the official `Microsoft.Extensions.AI` (MEAI) integration.
+- **MEAI-compatible providers**: Use `GoogleAdk.Models.Meai` to wrap any `IChatClient` (OpenAI, Anthropic, Ollama, Azure OpenAI, etc.).
 
 ## The Model Registry
 
@@ -40,6 +41,25 @@ var agent = new LlmAgent(new LlmAgentConfig
     Name = "direct_agent",
     Model = geminiModel,
     Instruction = "Provide helpful guidance."
+});
+```
+
+### Using `MeaiLlm` (any MEAI `IChatClient`)
+
+When you already have a `Microsoft.Extensions.AI` client, wrap it with `MeaiLlm` and pass it as the model:
+
+```csharp
+using GoogleAdk.Models.Meai;
+using Microsoft.Extensions.AI;
+
+IChatClient chatClient = /* build your MEAI client */;
+var meaiModel = new MeaiLlm("gpt-4o", chatClient);
+
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "meai_agent",
+    Model = meaiModel,
+    Instruction = "Respond using the MEAI client."
 });
 ```
 

@@ -53,6 +53,31 @@ var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRe
 });
 ```
 
+## Persisting sessions with EF Core
+
+For production, use `EfCoreSessionService` to persist sessions, events, and state across restarts. It stores session state, event history, and app/user-scoped state in an EF Core database.
+
+```csharp
+using GoogleAdk.Sessions.EfCore;
+using Microsoft.EntityFrameworkCore;
+
+var dbOptions = new DbContextOptionsBuilder<AdkSessionDbContext>()
+    .UseSqlite("Data Source=adk_sessions.db")
+    .Options;
+
+var dbFactory = new PooledDbContextFactory<AdkSessionDbContext>(dbOptions);
+var sessionService = new EfCoreSessionService(dbFactory);
+
+var runner = new Runner(new RunnerConfig
+{
+    AppName = "production_app",
+    Agent = myAgent,
+    SessionService = sessionService,
+    ArtifactService = new FileArtifactService("artifacts"),
+    MemoryService = new InMemoryMemoryService()
+});
+```
+
 ## Using ADK Web (Visual Dashboard)
 
 The ADK ships with a powerful visual dashboard, **ADK Web**, which automatically mounts an ASP.NET Core server and a Blazor front-end over your agent. It visualizes the execution graph, multi-agent orchestration, tool calls, and streaming responses in real-time.
@@ -89,3 +114,15 @@ if (args.Contains("--web"))
 // Fallback to standard Console execution
 await RunConsoleAppAsync(agent);
 ```
+
+## ADK API server and streaming
+
+`GoogleAdk.ApiServer` exposes HTTP APIs for running agents and fetching artifacts. The key runtime endpoints include:
+
+- `POST /run` for synchronous execution
+- `POST /run_sse` for SSE streaming
+- `POST /run_live` for bidirectional WebSocket streaming
+
+When streaming via SSE, the server splits events that include both content and `ArtifactDelta` into two separate SSE events. This prevents the web UI from double-rendering artifacts and mirrors the Python ADK server behavior.
+
+`RunConfig.SaveInputBlobsAsArtifacts` defaults to `true` in the API server, so inline file uploads are automatically saved and surfaced as artifacts when running via `/run` or `/run_sse`.
