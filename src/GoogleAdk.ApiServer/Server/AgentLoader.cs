@@ -1,6 +1,6 @@
 using GoogleAdk.Core.Agents;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Discovers and loads agent assemblies from a directory.

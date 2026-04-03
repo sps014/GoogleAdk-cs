@@ -36,7 +36,7 @@ Console.WriteLine($"DataStore ID: {vertexSearchTool.DataStoreId}\n");
 
 if(args.Contains("--web"))
 {
-    await AdkWeb.RunAsync(agent);
+    await AdkServer.RunAsync(agent);
     return;
 }
 

@@ -20,7 +20,7 @@ In your `Program.cs`, use the `AgentLoader` to register instances of your agents
 
 ```csharp
 using GoogleAdk.Core.Agents;
-using GoogleAdk.Dev.Server;
+using GoogleAdk.ApiServer.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 

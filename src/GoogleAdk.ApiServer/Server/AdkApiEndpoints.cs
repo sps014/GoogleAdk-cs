@@ -2,12 +2,11 @@ using System.Text.Json;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Agents;
-using GoogleAdk.ApiServer.Server;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Registers all ADK API endpoints on the WebApplication, matching the JS ADK API surface.

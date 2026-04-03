@@ -21,4 +21,4 @@ var agent = new LlmAgent(new LlmAgentConfig
     Instruction = "You are a helpful, brief, and concise AI assistant running locally via Ollama." 
 });
 
-await AdkWeb.RunAsync(agent);
+await AdkServer.RunAsync(agent);

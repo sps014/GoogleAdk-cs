@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Collects Activity (span) data in memory, indexed by event ID and session ID,

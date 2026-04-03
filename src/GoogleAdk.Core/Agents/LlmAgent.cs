@@ -2,7 +2,6 @@ using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Agents.Processors;
 using GoogleAdk.Core.CodeExecutors;
-using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Context;
 using GoogleAdk.Core.Examples;
 using GoogleAdk.Core.Planning;

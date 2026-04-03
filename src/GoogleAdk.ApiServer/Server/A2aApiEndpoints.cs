@@ -8,7 +8,7 @@ using RunConfig = GoogleAdk.Core.Agents.RunConfig;
 using StreamingMode = GoogleAdk.Core.Agents.StreamingMode;
 using Task = System.Threading.Tasks.Task;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 public static class A2aApiEndpoints
 {

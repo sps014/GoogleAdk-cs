@@ -25,13 +25,13 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 
 - **ADK Web (development server & UI)**: Run agents with the embedded dev UI,
   REST/WebSocket APIs, Swagger, and optional static file hosting—via
-  `AdkWeb.RunAsync`, the CLI (`GoogleAdk.ApiServer`), or your own host. See
+  `AdkServer.RunAsync`, the CLI (`GoogleAdk.ApiServer`), or your own host. See
   [Running agents](docs/running-agents.md).
 - **A2A (client + server)**: **Client** types in `src/GoogleAdk.Core/A2a`
   (`A2aClient`, `A2aRemoteAgent`, streaming/event helpers) for calling remote
   agents. **Server** endpoints via `MapA2aApi()` on the API host so your agent
   speaks the [A2A protocol](https://github.com/google/A2A/). Enable A2A on the
-  dev server with `enableA2a: true` in `AdkWeb.RunAsync` or the CLI `--a2a`
+  dev server with `enableA2a: true` in `AdkServer.RunAsync` or the CLI `--a2a`
   flag. Details: [docs/a2a.md](docs/a2a.md).
 - **Planning**: Attach an `IPlanner` to `LlmAgent` (e.g. built-in and ReAct-style
   planners) with natural-language planning processors in the LLM pipeline. See

@@ -4,7 +4,7 @@ using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Abstractions.Artifacts;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Manages Runner instances, caching one per agent app.

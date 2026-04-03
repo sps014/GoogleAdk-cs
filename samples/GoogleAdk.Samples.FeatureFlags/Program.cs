@@ -9,7 +9,6 @@ using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Apps;
 using GoogleAdk.Core.Features;
 using GoogleAdk.Core.Plugins;
-using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Context;
 using GoogleAdk.Models.Gemini;
 using GoogleAdk.Samples.FeatureFlags;

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using GoogleAdk.Core.Abstractions.Models;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Request body for /run and /run_sse endpoints.

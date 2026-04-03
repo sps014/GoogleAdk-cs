@@ -1,7 +1,6 @@
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Sessions;
-using GoogleAdk.ApiServer.Server;
 using Microsoft.Extensions.FileProviders;
 using System.Diagnostics;
 using GoogleAdk.Core.Abstractions.Artifacts;
@@ -13,10 +12,10 @@ namespace GoogleAdk.ApiServer;
 /// <summary>
 /// Simple static entry point for hosting an agent in the ADK dev server.
 /// <code>
-/// await AdkWeb.RunAsync(myAgent);
+/// await AdkServer.RunAsync(myAgent);
 /// </code>
 /// </summary>
-public static class AdkWeb
+public static class AdkServer
 {
     /// <summary>
     /// Starts the ADK dev server with the UI, serving the specified root agent.
@@ -65,7 +64,7 @@ public static class AdkWeb
         if (showAdkWebUI)
         {
             var embeddedProvider = new EmbeddedFileProvider(
-                typeof(AdkWeb).Assembly, "GoogleAdk.ApiServer.wwwroot");
+                typeof(AdkServer).Assembly, "GoogleAdk.ApiServer.wwwroot");
 
             app.UseDefaultFiles(new DefaultFilesOptions
             {

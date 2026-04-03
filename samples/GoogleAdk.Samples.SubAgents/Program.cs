@@ -91,4 +91,4 @@ var receptionist = new LlmAgent(new LlmAgentConfig
 var runner = new InMemoryRunner("sub-agent-transfer-sample", receptionist);
 
 
-await AdkWeb.RunAsync(receptionist);
+await AdkServer.RunAsync(receptionist);

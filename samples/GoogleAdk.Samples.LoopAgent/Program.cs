@@ -75,7 +75,7 @@ var refinementLoop = new LoopAgent(new LoopAgentConfig
 if (args.Contains("--web"))
 {
     Console.WriteLine("Starting ADK Web Dashboard...");
-    await AdkWeb.RunAsync(refinementLoop);
+    await AdkServer.RunAsync(refinementLoop);
     return;
 }
 

@@ -57,21 +57,21 @@ var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRe
 
 The ADK ships with a powerful visual dashboard, **ADK Web**, which automatically mounts an ASP.NET Core server and a Blazor front-end over your agent. It visualizes the execution graph, multi-agent orchestration, tool calls, and streaming responses in real-time.
 
-It is highly recommended to use `AdkWeb` when debugging complex workflows like `LoopAgent` or `ParallelAgent`.
+It is highly recommended to use `AdkServer` when debugging complex workflows like `LoopAgent` or `ParallelAgent`.
 
 ### Launching ADK Web
 
-You can launch the dashboard using a single line of code via `AdkWeb.RunAsync`.
+You can launch the dashboard using a single line of code via `AdkServer.RunAsync`.
 
 ```csharp
-using GoogleAdk.Dev;
+using GoogleAdk.DevServer;
 
 // Ensure your agent is fully configured
 var myComplexAgent = new SequentialAgent(new BaseAgentConfig { /* ... */ });
 
 // Launch the interactive dashboard application
 // The browser will automatically open to http://localhost:<port>
-await AdkWeb.RunAsync(myComplexAgent);
+await AdkServer.RunAsync(myComplexAgent);
 ```
 
 ### Running with Console fallback
@@ -82,7 +82,7 @@ A common pattern for samples is to allow the application to run via the console,
 if (args.Contains("--web"))
 {
     Console.WriteLine("Starting ADK Web Dashboard...");
-    await AdkWeb.RunAsync(agent);
+    await AdkServer.RunAsync(agent);
     return;
 }
 

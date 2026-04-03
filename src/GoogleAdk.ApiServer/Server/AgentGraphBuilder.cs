@@ -1,6 +1,6 @@
 using GoogleAdk.Core.Agents;
 
-namespace GoogleAdk.ApiServer.Server;
+namespace GoogleAdk.ApiServer;
 
 /// <summary>
 /// Builds a JSON-friendly graph representation of an agent hierarchy.

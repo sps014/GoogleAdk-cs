@@ -108,6 +108,6 @@ public class Program
             ]
         });
 
-        await AdkWeb.RunAsync(agent);
+        await AdkServer.RunAsync(agent);
     }
 }

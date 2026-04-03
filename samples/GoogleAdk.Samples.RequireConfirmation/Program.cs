@@ -41,7 +41,7 @@ var agent = new LlmAgent(new LlmAgentConfig
 if (args.Contains("--web"))
 {
     Console.WriteLine("Starting ADK Web Dashboard...");
-    await AdkWeb.RunAsync(agent);
+    await AdkServer.RunAsync(agent);
     return;
 }
 

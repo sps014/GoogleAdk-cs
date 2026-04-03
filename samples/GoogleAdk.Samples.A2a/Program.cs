@@ -38,7 +38,7 @@ static async Task RunServerAsync()
     });
 
     Console.WriteLine("Starting ADK Web with A2A endpoints...");
-    await AdkWeb.RunAsync(agent, enableA2a: true);
+    await AdkServer.RunAsync(agent, enableA2a: true);
 }
 
 static async Task RunClientAsync(string transport, string? baseUrl)
