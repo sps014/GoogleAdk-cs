@@ -114,4 +114,61 @@ public class AgentContext
         return await InvocationContext.ArtifactService.ListArtifactKeysAsync(req);
     }
 
+    /// <summary>
+    /// Triggers memory generation for the current session.
+    /// </summary>
+    public async Task AddSessionToMemoryAsync()
+    {
+        if (InvocationContext.MemoryService == null)
+            throw new InvalidOperationException("Cannot add session to memory: memory service is not available.");
+
+        await InvocationContext.MemoryService.AddSessionToMemoryAsync(Session);
+    }
+
+    /// <summary>
+    /// Adds an explicit list of events to the memory service.
+    /// </summary>
+    public async Task AddEventsToMemoryAsync(IEnumerable<Event> events, IDictionary<string, object>? customMetadata = null)
+    {
+        if (InvocationContext.MemoryService == null)
+            throw new InvalidOperationException("Cannot add events to memory: memory service is not available.");
+
+        await InvocationContext.MemoryService.AddEventsToMemoryAsync(
+            AppName,
+            UserId,
+            events,
+            Session.Id,
+            customMetadata);
+    }
+
+    /// <summary>
+    /// Adds explicit memory items directly to the memory service.
+    /// </summary>
+    public async Task AddMemoryAsync(IEnumerable<MemoryEntry> memories, IDictionary<string, object>? customMetadata = null)
+    {
+        if (InvocationContext.MemoryService == null)
+            throw new InvalidOperationException("Cannot add memory: memory service is not available.");
+
+        await InvocationContext.MemoryService.AddMemoryAsync(
+            AppName,
+            UserId,
+            memories,
+            customMetadata);
+    }
+
+    /// <summary>
+    /// Searches the memory of the current user.
+    /// </summary>
+    public async Task<SearchMemoryResponse> SearchMemoryAsync(string query)
+    {
+        if (InvocationContext.MemoryService == null)
+            throw new InvalidOperationException("Memory service is not available.");
+
+        return await InvocationContext.MemoryService.SearchMemoryAsync(new SearchMemoryRequest
+        {
+            AppName = AppName,
+            UserId = UserId,
+            Query = query
+        });
+    }
 }

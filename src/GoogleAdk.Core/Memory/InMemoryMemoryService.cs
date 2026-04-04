@@ -26,6 +26,21 @@ public class InMemoryMemoryService : IBaseMemoryService
         return Task.CompletedTask;
     }
 
+    public Task AddEventsToMemoryAsync(string appName, string userId, IEnumerable<Event> events, string? sessionId = null, IDictionary<string, object>? customMetadata = null)
+    {
+        var userKey = $"{appName}/{userId}";
+        if (!_sessionEvents.ContainsKey(userKey))
+            _sessionEvents[userKey] = new();
+
+        var sid = sessionId ?? "default";
+        if (!_sessionEvents[userKey].ContainsKey(sid))
+            _sessionEvents[userKey][sid] = new();
+
+        _sessionEvents[userKey][sid].AddRange(events.Where(e => e.Content?.Parts is { Count: > 0 }));
+
+        return Task.CompletedTask;
+    }
+
     public Task<SearchMemoryResponse> SearchMemoryAsync(SearchMemoryRequest request)
     {
         var userKey = $"{request.AppName}/{request.UserId}";

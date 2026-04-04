@@ -5,6 +5,7 @@ using GoogleAdk.Core.Abstractions.Memory;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Agents;
+using GoogleAdk.Core.Memory;
 using GoogleAdk.Core.Plugins;
 using System.Runtime.CompilerServices;
 
@@ -23,6 +24,7 @@ public class RunnerConfig
     public IBaseMemoryService? MemoryService { get; set; }
     public IBaseCredentialService? CredentialService { get; set; }
     public IEnumerable<BasePlugin>? Plugins { get; set; }
+    public Dictionary<string, object?>? InitialState { get; set; }
 }
 
 /// <summary>
@@ -38,6 +40,7 @@ public class Runner
     public BaseSessionService SessionService { get; }
     public IBaseMemoryService? MemoryService { get; }
     public IBaseCredentialService? CredentialService { get; }
+    public Dictionary<string, object?>? InitialState { get; }
 
     public Runner(RunnerConfig config)
     {
@@ -48,8 +51,9 @@ public class Runner
         PluginManager = new PluginManager(plugins);
         ArtifactService = config.ArtifactService;
         SessionService = config.SessionService;
-        MemoryService = config.MemoryService;
+        MemoryService = config.MemoryService ?? new InMemoryMemoryService();
         CredentialService = config.CredentialService;
+        InitialState = config.InitialState;
     }
 
     /// <summary>
@@ -66,6 +70,7 @@ public class Runner
         {
             AppName = AppName,
             UserId = userId,
+            State = InitialState != null ? new Dictionary<string, object?>(InitialState) : null
         });
 
         try

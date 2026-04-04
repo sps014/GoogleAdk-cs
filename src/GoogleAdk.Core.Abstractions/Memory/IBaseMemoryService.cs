@@ -1,3 +1,4 @@
+using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Core.Abstractions.Sessions;
 
@@ -39,6 +40,18 @@ public interface IBaseMemoryService
 {
     /// <summary>Adds a session to the memory.</summary>
     Task AddSessionToMemoryAsync(Session session);
+
+    /// <summary>Adds an explicit list of events to the memory service.</summary>
+    Task AddEventsToMemoryAsync(string appName, string userId, IEnumerable<Event> events, string? sessionId = null, IDictionary<string, object>? customMetadata = null)
+    {
+        throw new NotImplementedException("This memory service does not support adding event deltas. Call AddSessionToMemoryAsync(session) to ingest the full session.");
+    }
+
+    /// <summary>Adds explicit memory items directly to the memory service.</summary>
+    Task AddMemoryAsync(string appName, string userId, IEnumerable<MemoryEntry> memories, IDictionary<string, object>? customMetadata = null)
+    {
+        throw new NotImplementedException("This memory service does not support direct memory writes. Call AddEventsToMemoryAsync(...) or AddSessionToMemoryAsync(session) instead.");
+    }
 
     /// <summary>Searches for memories that match the query.</summary>
     Task<SearchMemoryResponse> SearchMemoryAsync(SearchMemoryRequest request);
