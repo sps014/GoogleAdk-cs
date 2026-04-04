@@ -116,6 +116,8 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
     Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed. If User asks about weather use the GetWeather tool",
     Tools = [ToolRegistry.GOOGLE_SEARCH, GetWeatherTool],  //Point to notice is GetWeatherTool is generated from GetWeather in format ADK expect
 });
+
+await AdkServer.RunAsync(rootAgent); //creates a webserver that can launch the adk web ui and other endpoints 
 ```
 
 ### Development UI
