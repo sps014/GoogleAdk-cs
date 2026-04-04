@@ -53,6 +53,11 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
   models. See [docs/models.md](docs/models.md).
 - **Sessions & persistence**: In-memory sessions in core; optional **EF Core**
   session storage in `GoogleAdk.Sessions.EfCore`.
+- **State & memory**: Session **state** (scoped keys, `{placeholder}` injection in
+  instructions) via `State` and `RunnerConfig.InitialState` / dev server defaults;
+  **memory** via `IBaseMemoryService` with `InMemoryMemoryService` as the runner default
+  and `AgentContext` helpers (`AddSessionToMemoryAsync`, `SearchMemoryAsync`, etc.).
+  See [docs/state.md](docs/state.md) and [docs/memory.md](docs/memory.md).
 - **Evaluation & optimization**: `GoogleAdk.Evaluation` (datasets, inference,
   LLM-as-judge scoring) and `GoogleAdk.Optimization` for systematic prompt/agent
   improvement. See [docs/evaluation-optimization.md](docs/evaluation-optimization.md).
