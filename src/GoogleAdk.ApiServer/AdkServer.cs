@@ -31,6 +31,7 @@ public static class AdkServer
         int port = 8080, 
         string host = "localhost", 
         bool showAdkWebUI = true, 
+        bool showSwaggerUI = true,
         bool enableA2a = false,
         Dictionary<string, object?>? initialState = null,
         bool enableCloudTracing = false)
@@ -57,7 +58,10 @@ public static class AdkServer
         builder.Services.AddSingleton(new InMemoryTraceCollector());
 
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "ADK Server API", Version = "v1" });
+        });
 
         builder.Services.AddCors(options =>
         {
@@ -67,8 +71,14 @@ public static class AdkServer
 
         var app = builder.Build();
         
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        if (showSwaggerUI)
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "ADK Server API v1");
+            });
+        }
         
         app.UseWebSockets();
         app.UseCors();
@@ -107,7 +117,8 @@ public static class AdkServer
         if (showAdkWebUI)
             grid.AddRow("[bold green]Dev UI[/]", $"[link={url}/dev-ui]{url}/dev-ui[/]");
             
-        grid.AddRow("[bold yellow]Swagger UI[/]", $"[link={url}/swagger]{url}/swagger[/]");
+        if (showSwaggerUI)
+            grid.AddRow("[bold yellow]Swagger UI[/]", $"[link={url}/swagger]{url}/swagger[/]");
         grid.AddRow("[bold magenta]Agent[/]", rootAgent.Name);
         
         if (enableA2a)

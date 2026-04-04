@@ -33,7 +33,9 @@ public static class A2aApiEndpoints
                 };
                 var card = await AgentCardBuilder.GetA2AAgentCardAsync(agent, transports);
                 return Results.Json(card, s_jsonOptions);
-            });
+            })
+            .Produces<AgentCard>()
+            .WithTags("A2A");
 
         app.MapPost("/a2a/{appName}/jsonrpc", async (
             HttpContext http,
@@ -67,7 +69,9 @@ public static class A2aApiEndpoints
 
             var single = await ExecuteA2aSingleAsync(appName, request, loader, manager, http.RequestAborted);
             return Results.Json(single, s_jsonOptions);
-        });
+        })
+        .Produces<JsonRpcResponse>()
+        .WithTags("A2A");
 
         app.MapPost("/a2a/{appName}/rest/message:send", async (
             HttpContext http,
@@ -78,7 +82,9 @@ public static class A2aApiEndpoints
         {
             var result = await ExecuteA2aSingleAsync(appName, request, loader, manager, http.RequestAborted);
             return Results.Json(result, s_jsonOptions);
-        });
+        })
+        .Produces<RestSendResponse>()
+        .WithTags("A2A");
 
         app.MapPost("/a2a/{appName}/rest/message:stream", async (
             HttpContext http,
@@ -101,7 +107,8 @@ public static class A2aApiEndpoints
             }
 
             return Results.Empty;
-        });
+        })
+        .WithTags("A2A");
 
         return app;
     }
