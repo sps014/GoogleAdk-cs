@@ -239,6 +239,7 @@ public class MeaiLlm : BaseLlm
         if (llmRequest.ToolsDict.Count > 0)
         {
             options.Tools = new List<AITool>();
+            options.ToolMode = ChatToolMode.Auto;
             foreach (var kvp in llmRequest.ToolsDict)
             {
                 var declaration = kvp.Value.GetDeclaration();
@@ -266,7 +267,7 @@ public class MeaiLlm : BaseLlm
                         schemaElement = emptyDoc.RootElement.Clone();
                     }
 
-                    var aiDeclaration = AIFunctionFactory.CreateDeclaration(name, description, schemaElement);
+                    var aiDeclaration = new AdkAIFunction(name, description, schemaElement);
                     options.Tools.Add(aiDeclaration);
                 }
             }
