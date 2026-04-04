@@ -64,7 +64,7 @@ static async Task RunClientAsync(string transport, string? baseUrl)
         Configuration = new MessageSendConfiguration
         {
             Blocking = true,
-            AcceptedOutputModes = ["text"]
+            AcceptedOutputModes = ["text/plain"]
         }
     };
 

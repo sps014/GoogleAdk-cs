@@ -38,10 +38,10 @@ public sealed class AgentCard
     public AgentCapabilities Capabilities { get; set; } = new();
 
     [JsonPropertyName("defaultInputModes")]
-    public List<string> DefaultInputModes { get; set; } = new() { "text" };
+    public List<string> DefaultInputModes { get; set; } = new() { "text/plain" };
 
     [JsonPropertyName("defaultOutputModes")]
-    public List<string> DefaultOutputModes { get; set; } = new() { "text" };
+    public List<string> DefaultOutputModes { get; set; } = new() { "text/plain" };
 
     [JsonPropertyName("additionalInterfaces")]
     public List<AgentInterface> AdditionalInterfaces { get; set; } = new();
@@ -111,7 +111,7 @@ public static class AgentCardBuilder
         return new AgentCard
         {
             Name = agent.Name,
-            Description = agent.Description ?? string.Empty,
+            Description = string.IsNullOrWhiteSpace(agent.Description) ? agent.Name : agent.Description,
             ProtocolVersion = "0.3.0",
             Version = "1.0.0",
             Skills = await BuildAgentSkillsAsync(agent),
@@ -124,8 +124,8 @@ public static class AgentCardBuilder
                 PushNotifications = false,
                 Streaming = true,
             },
-            DefaultInputModes = new List<string> { "text" },
-            DefaultOutputModes = new List<string> { "text" },
+            DefaultInputModes = new List<string> { "text/plain" },
+            DefaultOutputModes = new List<string> { "text/plain" },
             AdditionalInterfaces = transportList,
         };
     }

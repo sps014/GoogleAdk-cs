@@ -76,7 +76,7 @@ public static class AdkServer
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "ADK Server API v1");
+                c.SwaggerEndpoint("./v1/swagger.json", "ADK Server API v1");
             });
         }
         
