@@ -6,6 +6,9 @@ using System.Diagnostics;
 using GoogleAdk.Core.Abstractions.Artifacts;
 using GoogleAdk.Core.Abstractions.Memory;
 using GoogleAdk.Core.Artifacts;
+using GoogleAdk.Core.Telemetry;
+using OpenTelemetry.Trace;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 
 namespace GoogleAdk.ApiServer;
@@ -29,7 +32,8 @@ public static class AdkServer
         string host = "localhost", 
         bool showAdkWebUI = true, 
         bool enableA2a = false,
-        Dictionary<string, object?>? initialState = null)
+        Dictionary<string, object?>? initialState = null,
+        bool enableCloudTracing = false)
     {
         var agentLoader = new AgentLoader(".");
         agentLoader.Register(rootAgent.Name, rootAgent);
@@ -38,6 +42,14 @@ public static class AdkServer
         artifactService ??= new InMemoryArtifactService();
 
         var builder = WebApplication.CreateBuilder();
+
+        if (enableCloudTracing)
+        {
+            builder.Services.AddOpenTelemetry()
+                .WithTracing(tracing => tracing
+                    .AddSource(AdkTracing.ActivitySource.Name)
+                    .AddGoogleCloudTracing());
+        }
 
         builder.Services.AddSingleton(agentLoader);
         builder.Services.AddSingleton<BaseSessionService>(sessionService);
