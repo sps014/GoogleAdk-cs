@@ -93,21 +93,6 @@ For building, evaluating, and deploying agents, follow the docs and samples:
 //Load env variables
 AdkEnv.Load();
 
-/// <summary>Gets the current weather for a city. Returns temperature and conditions.</summary>
-/// <param name="city">The city name</param>
-[FunctionTool]
-static object? GetWeather(string city)
-{
-    return new Dictionary<string, object?>
-    {
-        ["city"] = city,
-        ["temperature_celsius"] = city.Contains("New York", StringComparison.OrdinalIgnoreCase) ? 22 : 18,
-        ["condition"] = city.Contains("London", StringComparison.OrdinalIgnoreCase) ? "Rainy" : "Sunny",
-        ["humidity_percent"] = 65,
-        ["wind_kph"] = 12,
-    };
-}
-
 var rootAgent = new LlmAgent(new LlmAgentConfig
 {
     Name = "search_assistant",
@@ -118,6 +103,17 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
 });
 
 await AdkServer.RunAsync(rootAgent); //creates a webserver that can launch the adk web ui and other endpoints 
+
+
+[FunctionTool]
+static WeatherData? GetWeatherData(string location)
+{
+    // trigger recompilation
+    return new WeatherData(location, "Sunny with a chance of rainbows");
+}
+public record WeatherData(string Location, string Forecast);
+
+
 ```
 
 ### Development UI
