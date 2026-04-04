@@ -105,6 +105,12 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
 await AdkServer.RunAsync(rootAgent); //creates a webserver that can launch the adk web ui and other endpoints 
 
 
+
+/// <summary>
+/// Fetches the current weather data for a given location.
+/// </summary>
+/// <param name="location">The location to get the weather for (e.g., 'New York')</param>
+/// <returns>A WeatherData object containing the location and forecast</returns>
 [FunctionTool]
 static WeatherData? GetWeatherData(string location)
 {
