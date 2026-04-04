@@ -4,6 +4,9 @@
     <ProjectReference Include="..\..\src\GoogleAdk.Core\GoogleAdk.Core.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.Models.Meai\GoogleAdk.Models.Meai.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.ApiServer\GoogleAdk.ApiServer.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.SourceGenerators\GoogleAdk.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
