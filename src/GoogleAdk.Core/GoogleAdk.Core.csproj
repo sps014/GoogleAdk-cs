@@ -3,14 +3,13 @@
   <ItemGroup>
     <ProjectReference Include="..\GoogleAdk.Core.Abstractions\GoogleAdk.Core.Abstractions.csproj" />
     <ProjectReference Include="..\GoogleAdk.Models.Gemini\GoogleAdk.Models.Gemini.csproj" />
-    <ProjectReference Include="..\GoogleAdk.SourceGenerators\GoogleAdk.SourceGenerators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\GoogleAdk.SourceGenerators\GoogleAdk.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.14.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
   </ItemGroup>
 
   <PropertyGroup>
