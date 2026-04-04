@@ -21,6 +21,8 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 
 ---
 
+> **⚠️ EXPERIMENTAL** - This project is in active development and the API will change. Builds are nightly and super frequent and may contain breaking changes. Use in production at your own risk.
+
 ## ✨ Key Features
 
 - **ADK Web (development server & UI)**: Run agents with the embedded dev UI,
@@ -185,9 +187,6 @@ Use, reproduction, and distribution of this repository are governed by the **Apa
 
 If you contribute code, your contributions may be subject to the contributor license arrangements described in the contribution documentation. Nothing in this README is legal advice or a waiver of Google’s or any third party’s rights except as stated in **[LICENSE.md](LICENSE.md)** and applicable licenses.
 
-## Preview
-
-This Adk port is in preview, APIs may change or break. Please do not use in production systems.
 ---
 
 _Happy Agent Building!_
