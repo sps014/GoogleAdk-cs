@@ -70,6 +70,22 @@ await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
         }
     }
 }
+
+
+/// <summary>Reimburse the employee for the given amount.</summary>
+/// <param name="amount">Dollar amount to reimburse.</param>
+[FunctionTool(Name = "reimburse")]
+static object? Reimburse(int amount)
+{
+    if (amount <= 0)
+        return new Dictionary<string, object?> { ["status"] = "Invalid reimbursement amount." };
+
+    return new Dictionary<string, object?>
+    {
+        ["status"] = "ok",
+        ["amount"] = amount
+    };
+}
 ```
 
 If `Accepted` is true, the ADK will proceed to invoke the underlying sensitive tool and relay the result to the LLM. If false, it blocks execution and informs the LLM that the user denied the request.
