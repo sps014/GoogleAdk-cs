@@ -39,6 +39,7 @@
     <Project Path="samples/GoogleAdk.Samples.ContextCaching/GoogleAdk.Samples.ContextCaching.csproj" />
     <Project Path="samples/GoogleAdk.Samples.CodeExecutors/GoogleAdk.Samples.CodeExecutors.csproj" />
     <Project Path="samples/GoogleAdk.Samples.VertexAiSearch/GoogleAdk.Samples.VertexAiSearch.csproj" />
+    <Project Path="samples/GoogleAdk.Samples.RagEngineSearch/GoogleAdk.Samples.RagEngineSearch.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Ollama/GoogleAdk.Samples.Ollama.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Planning/GoogleAdk.Samples.Planning.csproj" />
     <Project Path="samples/GoogleAdk.Samples.LiveBidi/GoogleAdk.Samples.LiveBidi.csproj" />

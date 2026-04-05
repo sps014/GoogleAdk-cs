@@ -16,6 +16,7 @@ The ADK comes with several built-in tools ready to be used:
 - **`PubSubMessageTool`**: Publish messages to Google Cloud Pub/Sub topics.
 - **`GoogleApiTool`**: Dynamically call Google Cloud APIs using the Discovery API.
 - **`ApiHubTool`**: Search and discover enterprise APIs in Google Cloud API Hub.
+- **`DiscoveryEngineSearchTool`**: Perform searches against Google Cloud Discovery Engine (Vertex AI Search) datastores.
 - **`VertexAiRagRetrievalTool`**: Execute RAG retrieval queries using Vertex AI Search corpora and data stores.
 
 ### Using Built-in Cloud Tools
@@ -94,6 +95,24 @@ var agent = new LlmAgent(new LlmAgentConfig
 });
 ```
 
+#### Discovery Engine Search
+
+The **`DiscoveryEngineSearchTool`** allows the LLM to search across a Discovery Engine (Vertex AI Search) datastore or engine. It must be initialized with either a `datastore` or an `engine` resource name.
+
+```csharp
+var searchTool = new DiscoveryEngineSearchTool(
+    datastore: "projects/my-project/locations/global/collections/default_collection/dataStores/my-docs"
+);
+
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "search_agent",
+    Model = "gemini-2.5-flash",
+    Instruction = "You are a helpful assistant. Use the search tool to find answers in the company docs.",
+    Tools = [searchTool]
+});
+```
+
 #### Vertex AI RAG Retrieval
 
 The **`VertexAiRagRetrievalTool`** integrates directly with Vertex AI Search (Discovery Engine) data stores or corpora for Retrieval-Augmented Generation (RAG). Note that this maps to a built-in retrieval configuration rather than a function call.
@@ -102,7 +121,10 @@ The **`VertexAiRagRetrievalTool`** integrates directly with Vertex AI Search (Di
 var ragTool = new VertexAiRagRetrievalTool(
     ragResources: [
         new VertexAiSearchDataStoreSpec { DataStore = "projects/my-project/locations/global/collections/default_collection/dataStores/my-docs" }
-    ]
+    ],
+    ragCorpora: ["projects/my-project/locations/us-central1/ragCorpora/1234567890"],
+    similarityTopK: 5,
+    vectorDistanceThreshold: 0.3
 );
 
 var agent = new LlmAgent(new LlmAgentConfig

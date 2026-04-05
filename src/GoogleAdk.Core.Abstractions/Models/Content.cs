@@ -249,6 +249,27 @@ public class RetrievalConfig
 {
     [JsonPropertyName("vertexAiSearch")]
     public VertexAiSearchConfig? VertexAiSearch { get; set; }
+
+    [JsonPropertyName("vertexRagStore")]
+    public VertexRagStoreConfig? VertexRagStore { get; set; }
+}
+
+/// <summary>
+/// Configuration for Vertex RAG Store.
+/// </summary>
+public class VertexRagStoreConfig
+{
+    [JsonPropertyName("ragCorpora")]
+    public List<string>? RagCorpora { get; set; }
+
+    [JsonPropertyName("ragResources")]
+    public List<VertexAiSearchDataStoreSpec>? RagResources { get; set; }
+
+    [JsonPropertyName("similarityTopK")]
+    public int? SimilarityTopK { get; set; }
+
+    [JsonPropertyName("vectorDistanceThreshold")]
+    public double? VectorDistanceThreshold { get; set; }
 }
 
 /// <summary>

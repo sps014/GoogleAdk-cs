@@ -199,6 +199,43 @@ public sealed class GeminiContextCacheManager
                     {
                         toolsList.Add(new Google.GenAI.Types.Tool { GoogleSearch = new Google.GenAI.Types.GoogleSearch() });
                     }
+                    else if (tool.Retrieval?.VertexAiSearch != null)
+                    {
+                        var vs = tool.Retrieval.VertexAiSearch;
+                        var specs = vs.DataStoreSpecs?.Select(s => new Google.GenAI.Types.VertexAISearchDataStoreSpec { DataStore = s.DataStore }).ToList();
+                        
+                        toolsList.Add(new Google.GenAI.Types.Tool 
+                        { 
+                            Retrieval = new Google.GenAI.Types.Retrieval 
+                            {
+                                VertexAiSearch = new Google.GenAI.Types.VertexAISearch
+                                {
+                                    Datastore = vs.Datastore,
+                                    Engine = vs.Engine,
+                                    Filter = vs.Filter,
+                                    DataStoreSpecs = specs,
+                                    MaxResults = vs.MaxResults
+                                }
+                            }
+                        });
+                    }
+                    else if (tool.Retrieval?.VertexRagStore != null)
+                    {
+                        var vrs = tool.Retrieval.VertexRagStore;
+                        
+                        toolsList.Add(new Google.GenAI.Types.Tool 
+                        { 
+                            Retrieval = new Google.GenAI.Types.Retrieval 
+                            {
+                                VertexRagStore = new Google.GenAI.Types.VertexRagStore
+                                {
+                                    RagCorpora = vrs.RagCorpora,
+                                    SimilarityTopK = vrs.SimilarityTopK,
+                                    VectorDistanceThreshold = vrs.VectorDistanceThreshold
+                                }
+                            }
+                        });
+                    }
                 }
                 genAiConfig.Tools = toolsList;
             }
