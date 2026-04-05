@@ -78,6 +78,24 @@ public class GeminiLlm : MeaiLlm
                     };
                     SetRetrievalTool(genModel, toolObj);
                 }
+                else if (toolDecl.Retrieval?.VertexRagStore != null)
+                {
+                    var vrs = toolDecl.Retrieval.VertexRagStore;
+                    
+                    var toolObj = new GenerativeAI.Types.Tool
+                    {
+                        Retrieval = new VertexRetrievalTool
+                        {
+                            VertexRagStore = new VertexRagStore
+                            {
+                                RagCorpora = vrs.RagCorpora,
+                                SimilarityTopK = vrs.SimilarityTopK,
+                                VectorDistanceThreshold = (float?)vrs.VectorDistanceThreshold
+                            }
+                        }
+                    };
+                    SetRetrievalTool(genModel, toolObj);
+                }
             }
         }
 

@@ -37,10 +37,12 @@ public sealed class VertexAiRagRetrievalTool : BaseTool
         {
             Retrieval = new RetrievalConfig
             {
-                VertexAiSearch = new VertexAiSearchConfig
+                VertexRagStore = new VertexRagStoreConfig
                 {
-                    // Map RAG properties into the config
-                    DataStoreSpecs = RagResources
+                    RagCorpora = RagCorpora,
+                    RagResources = RagResources,
+                    SimilarityTopK = SimilarityTopK,
+                    VectorDistanceThreshold = VectorDistanceThreshold
                 }
             }
         });
