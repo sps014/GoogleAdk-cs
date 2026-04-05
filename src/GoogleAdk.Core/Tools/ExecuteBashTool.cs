@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using GoogleAdk.Core.Abstractions.Models;
+using GoogleAdk.Core.Abstractions.Tools;
 using GoogleAdk.Core.Agents;
 
 namespace GoogleAdk.Core.Tools;
@@ -14,41 +16,94 @@ public sealed class ExecuteBashTool : BaseTool
     public ExecuteBashTool(IEnumerable<string>? allowedPrefixes = null)
         : base("bash", "Executes a shell command.")
     {
-        _allowedPrefixes = (allowedPrefixes ?? new[] { "echo", "dir", "type" }).ToList();
+        _allowedPrefixes = (allowedPrefixes ?? new[] { "*" }).ToList();
     }
 
-    public override Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
+    public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
         var command = args.GetValueOrDefault("command")?.ToString() ?? string.Empty;
-        if (!_allowedPrefixes.Any(p => command.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(command))
         {
-            return Task.FromResult<object?>(new Dictionary<string, object?>
-            {
-                ["error"] = "Command not allowed by policy."
-            });
+            return new Dictionary<string, object?> { ["error"] = "Command is required." };
         }
 
-        var psi = new ProcessStartInfo("cmd.exe", $"/c {command}")
+        var isAllowed = _allowedPrefixes.Contains("*") || 
+                        _allowedPrefixes.Any(p => command.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+
+        if (!isAllowed)
+        {
+            return new Dictionary<string, object?>
+            {
+                ["error"] = $"Command not allowed by policy. Permitted prefixes are: {string.Join(", ", _allowedPrefixes)}"
+            };
+        }
+
+        var functionCallId = context.FunctionCallId ?? string.Empty;
+        if (!context.EventActions.RequestedToolConfirmations.TryGetValue(functionCallId, out var confirmation))
+        {
+            context.EventActions.RequestedToolConfirmations[functionCallId] = new ToolConfirmation
+            {
+                FunctionCallId = functionCallId,
+            };
+
+            return new Dictionary<string, object?>
+            {
+                ["error"] = "This tool call requires confirmation, please approve or reject."
+            };
+        }
+
+        if (confirmation.Accepted != true)
+        {
+            return new Dictionary<string, object?> { ["error"] = "This tool call is rejected." };
+        }
+
+        var (fileName, arguments) = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? ("cmd.exe", $"/c {command}")
+            : ("bash", $"-c \"{command.Replace("\"", "\\\"")}\"");
+
+        var psi = new ProcessStartInfo(fileName, arguments)
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
+            WorkingDirectory = Environment.CurrentDirectory
         };
 
         using var proc = Process.Start(psi);
         if (proc == null)
-            return Task.FromResult<object?>(new Dictionary<string, object?> { ["error"] = "Failed to start process." });
+            return new Dictionary<string, object?> { ["error"] = "Failed to start process." };
 
-        var output = proc.StandardOutput.ReadToEnd();
-        var error = proc.StandardError.ReadToEnd();
-        proc.WaitForExit(5000);
+        var outputTask = proc.StandardOutput.ReadToEndAsync();
+        var errorTask = proc.StandardError.ReadToEndAsync();
 
-        return Task.FromResult<object?>(new Dictionary<string, object?>
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+        var processExitTask = proc.WaitForExitAsync();
+
+        var completedTask = await Task.WhenAny(processExitTask, timeoutTask);
+        
+        if (completedTask == timeoutTask)
         {
-            ["output"] = output,
-            ["error"] = error
-        });
+            try
+            {
+                proc.Kill();
+            }
+            catch (InvalidOperationException)
+            {
+                // Process already exited
+            }
+            return new Dictionary<string, object?> { ["error"] = "Command timed out after 30 seconds." };
+        }
+
+        var output = await outputTask;
+        var error = await errorTask;
+
+        return new Dictionary<string, object?>
+        {
+            ["stdout"] = string.IsNullOrEmpty(output) ? "<No stdout captured>" : output,
+            ["stderr"] = string.IsNullOrEmpty(error) ? "<No stderr captured>" : error,
+            ["returncode"] = proc.ExitCode
+        };
     }
 
     public override FunctionDeclaration? GetDeclaration()
@@ -65,7 +120,7 @@ public sealed class ExecuteBashTool : BaseTool
                     ["command"] = new Dictionary<string, object?>
                     {
                         ["type"] = "string",
-                        ["description"] = "Shell command to execute."
+                        ["description"] = "The bash command to execute."
                     }
                 },
                 ["required"] = new[] { "command" }

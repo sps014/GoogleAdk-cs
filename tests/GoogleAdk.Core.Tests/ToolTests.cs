@@ -40,8 +40,8 @@ public class ToolTests
 
         var decl = tool.GetDeclaration();
         Assert.NotNull(decl);
-        Assert.Equal("test", decl!.Name);
-        Assert.Equal("Test tool", decl.Description);
+        Assert.Equal("test_tool", decl!.Name);
+        Assert.Equal("Test tool.", decl.Description);
     }
 
     [Fact]

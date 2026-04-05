@@ -159,6 +159,15 @@ public class ToolDeclaration
 
     [JsonPropertyName("retrieval")]
     public RetrievalConfig? Retrieval { get; set; }
+
+    [JsonPropertyName("urlContext")]
+    public Dictionary<string, object?>? UrlContext { get; set; }
+
+    [JsonPropertyName("enterpriseWebSearch")]
+    public Dictionary<string, object?>? EnterpriseWebSearch { get; set; }
+
+    [JsonPropertyName("googleMaps")]
+    public Dictionary<string, object?>? GoogleMaps { get; set; }
 }
 
 /// <summary>

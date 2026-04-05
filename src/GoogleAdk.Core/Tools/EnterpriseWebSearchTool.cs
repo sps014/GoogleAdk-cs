@@ -20,7 +20,7 @@ public sealed class EnterpriseWebSearchTool : BaseTool
         llmRequest.Config.Tools ??= new List<ToolDeclaration>();
         llmRequest.Config.Tools.Add(new ToolDeclaration
         {
-            GoogleSearch = new Dictionary<string, object?>()
+            EnterpriseWebSearch = new Dictionary<string, object?>()
         });
         return Task.CompletedTask;
     }

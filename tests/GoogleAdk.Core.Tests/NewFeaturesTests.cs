@@ -345,7 +345,7 @@ public class NewFeaturesTests
         var request = new LlmRequest();
         var ctx = new AgentContext(CreateInvocationContext(new LlmAgent(new LlmAgentConfig { Name = "a" })));
 
-        await new DiscoveryEngineSearchTool().ProcessLlmRequestAsync(ctx, request);
+        await new DiscoveryEngineSearchTool(datastore: "store-id").ProcessLlmRequestAsync(ctx, request);
         await new EnterpriseWebSearchTool().ProcessLlmRequestAsync(ctx, request);
         await new GoogleMapsGroundingTool().ProcessLlmRequestAsync(ctx, request);
         await new UrlContextTool().ProcessLlmRequestAsync(ctx, request);

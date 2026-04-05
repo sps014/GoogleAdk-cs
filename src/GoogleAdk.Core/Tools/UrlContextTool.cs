@@ -20,7 +20,7 @@ public sealed class UrlContextTool : BaseTool
         llmRequest.Config.Tools ??= new List<ToolDeclaration>();
         llmRequest.Config.Tools.Add(new ToolDeclaration
         {
-            GoogleSearch = new Dictionary<string, object?>()
+            UrlContext = new Dictionary<string, object?>()
         });
         return Task.CompletedTask;
     }
