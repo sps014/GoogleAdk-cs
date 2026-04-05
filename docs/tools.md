@@ -10,6 +10,13 @@ The ADK comes with several built-in tools ready to be used:
 - **`VertexAiSearchTool`**: Connects to Google Cloud Vertex AI Search (Discovery Engine) data stores.
 - **`AuthTool`**: Triggers a credential request flow for authenticating users.
 - **`AgentTool`**: Wraps an entire sub-agent as a callable tool, enabling hierarchical agent orchestration.
+- **`BigQueryQueryTool` & `BigQueryMetadataTool`**: Execute queries and fetch schema metadata from Google Cloud BigQuery.
+- **`SpannerQueryTool`**: Execute SQL queries against Google Cloud Spanner databases.
+- **`BigtableQueryTool`**: Read rows and ranges from Google Cloud Bigtable.
+- **`PubSubMessageTool`**: Publish messages to Google Cloud Pub/Sub topics.
+- **`GoogleApiTool`**: Dynamically call Google Cloud APIs using the Discovery API.
+- **`ApiHubTool`**: Search and discover enterprise APIs in Google Cloud API Hub.
+- **`VertexAiRagRetrievalTool`**: Execute RAG retrieval queries using Vertex AI Search corpora and data stores.
 
 ## Source Generated Tools (Recommended)
 
