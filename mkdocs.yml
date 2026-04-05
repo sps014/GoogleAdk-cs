@@ -59,8 +59,7 @@ nav:
     - Human in the Loop: human-in-the-loop.md
     - Code Execution: code-execution.md
     - Model Context Protocol (MCP): mcp.md
-    - Artifacts: artifacts.md
-    - Artifact Handling: artifact-handling.md
+    - Artifact Handling: artifacts.md
   - Models & Connectivity:
     - Models: models.md
     - Agent-to-Agent (A2A): a2a.md
