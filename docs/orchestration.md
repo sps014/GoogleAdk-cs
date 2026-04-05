@@ -35,7 +35,7 @@ var researchAgent = new LlmAgent(new LlmAgentConfig { Name = "researcher", Instr
 var analystAgent = new LlmAgent(new LlmAgentConfig { Name = "analyst", Instruction = "..." });
 var writerAgent = new LlmAgent(new LlmAgentConfig { Name = "writer", Instruction = "..." });
 
-var pipeline = new SequentialAgent(new BaseAgentConfig
+var pipeline = new SequentialAgent(new SequentialAgentConfig
 {
     Name = "research_pipeline",
     Description = "A pipeline that researches, analyzes, and writes a report.",
@@ -56,7 +56,7 @@ var optimist = new LlmAgent(new LlmAgentConfig { Name = "optimist", Instruction 
 var pessimist = new LlmAgent(new LlmAgentConfig { Name = "pessimist", Instruction = "..." });
 var pragmatist = new LlmAgent(new LlmAgentConfig { Name = "pragmatist", Instruction = "..." });
 
-var parallelAnalysis = new ParallelAgent(new BaseAgentConfig
+var parallelAnalysis = new ParallelAgent(new ParallelAgentConfig
 {
     Name = "parallel_analysis",
     Description = "Runs optimist, pessimist, and pragmatist analyses in parallel.",

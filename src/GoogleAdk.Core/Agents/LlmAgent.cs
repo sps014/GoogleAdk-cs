@@ -62,6 +62,9 @@ public class LlmAgentConfig : BaseAgentConfig
     /// <summary>The LLM model — accepts a <see cref="BaseLlm"/> instance or a model name string via implicit conversion.</summary>
     public LlmModel? Model { get; set; }
 
+    /// <summary>Static content sent literally at position 0 without placeholder processing.</summary>
+    public Content? StaticInstruction { get; set; }
+
     /// <summary>Static instruction string or dynamic provider.</summary>
     public string? Instruction { get; set; }
 
@@ -155,6 +158,7 @@ public class LlmAgentConfig : BaseAgentConfig
 public class LlmAgent : BaseAgent
 {
     public LlmModel? Model { get; set; }
+    public Content? StaticInstruction { get; set; }
     public string? Instruction { get; set; }
     public InstructionProvider? InstructionProviderFunc { get; set; }
     public string? GlobalInstruction { get; set; }
@@ -184,6 +188,7 @@ public class LlmAgent : BaseAgent
     public LlmAgent(LlmAgentConfig config) : base(config)
     {
         Model = config.Model;
+        StaticInstruction = config.StaticInstruction;
         Instruction = config.Instruction;
         InstructionProviderFunc = config.InstructionProvider;
         GlobalInstruction = config.GlobalInstruction;

@@ -530,7 +530,7 @@ public class StreamingEventOrderTests
 
         var fcEvents = events.Where(e => e.GetFunctionCalls().Count > 0).ToList();
         Assert.True(fcEvents.Count > 0, "Agent should call get_weather");
-        Assert.Equal("get_weather", fcEvents[0].GetFunctionCalls()[0].Name);
+        Assert.Equal("GetWeather", fcEvents[0].GetFunctionCalls()[0].Name);
 
         var frEvents = events.Where(e => e.GetFunctionResponses().Count > 0).ToList();
         Assert.True(frEvents.Count > 0, "Should have tool response events");
@@ -600,7 +600,7 @@ public class StreamingEventOrderTests
         var (runner, sessionId) = await SetupAsync(agent, "real-add-test");
         var events = await CollectEventsAsync(runner, sessionId, UserMessage("What is 15 + 27?"));
 
-        var fcEvents = events.Where(e => e.GetFunctionCalls().Any(c => c.Name == "add")).ToList();
+        var fcEvents = events.Where(e => e.GetFunctionCalls().Any(c => string.Equals(c.Name, "Add", StringComparison.OrdinalIgnoreCase))).ToList();
         Assert.True(fcEvents.Count > 0, "Agent should call the add tool");
 
         var finalText = events.Last(e => e.IsFinalResponse()).Content?.Parts?.First().Text ?? "";

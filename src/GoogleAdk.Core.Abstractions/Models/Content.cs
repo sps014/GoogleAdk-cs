@@ -298,3 +298,49 @@ public class Transcription
     [JsonPropertyName("text")]
     public string? Text { get; set; }
 }
+
+/// <summary>
+/// Speech configuration for live agents.
+/// </summary>
+public class SpeechConfig
+{
+    [JsonPropertyName("voiceConfig")]
+    public Dictionary<string, object?>? VoiceConfig { get; set; }
+}
+
+/// <summary>
+/// Audio transcription configuration.
+/// </summary>
+public class AudioTranscriptionConfig
+{
+    [JsonPropertyName("languageCodes")]
+    public List<string>? LanguageCodes { get; set; }
+}
+
+/// <summary>
+/// Realtime input configuration.
+/// </summary>
+public class RealtimeInputConfig
+{
+}
+
+/// <summary>
+/// Proactivity configuration.
+/// </summary>
+public class ProactivityConfig
+{
+}
+
+/// <summary>
+/// Session resumption configuration.
+/// </summary>
+public class SessionResumptionConfig
+{
+}
+
+/// <summary>
+/// Context window compression configuration.
+/// </summary>
+public class ContextWindowCompressionConfig
+{
+}

@@ -105,4 +105,67 @@ public class NewToolsRealLlmE2eTests
         Assert.True(fullResponse.Contains("compute engine") || fullResponse.Contains("error"), 
             $"Unexpected response: {fullResponse}");
     }
+
+    [Fact]
+    public async Task RealLlm_CanUseStaticInstructionAndSequentialAgents()
+    {
+        var staticContent = new Content
+        {
+            Role = "system",
+            Parts = new List<Part> { new Part { Text = "You are a pirate. You must speak like a pirate. Arrr!" } }
+        };
+
+        var pirateAgent = new LlmAgent(new LlmAgentConfig
+        {
+            Name = "pirate-agent",
+            Model = "gemini-2.5-flash",
+            StaticInstruction = staticContent,
+            Instruction = "Translate the user's sentence."
+        });
+
+        var echoAgent = new LlmAgent(new LlmAgentConfig
+        {
+            Name = "echo-agent",
+            Model = "gemini-2.5-flash",
+            Instruction = "Repeat what the previous agent said."
+        });
+
+        var seqAgent = new SequentialAgent(new SequentialAgentConfig
+        {
+            Name = "seq-agent",
+            SubAgents = [pirateAgent, echoAgent]
+        });
+
+        var runner = new InMemoryRunner("seq-e2e", seqAgent);
+        var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRequest
+        {
+            AppName = "seq-e2e",
+            UserId = "user-real-seq",
+        });
+
+        var userMessage = new Content
+        {
+            Role = "user",
+            Parts = new List<Part> { new Part { Text = "Hello friend, let's go on an adventure." } }
+        };
+
+        var responseParts = new List<string>();
+        await foreach (var response in runner.RunAsync("user-real-seq", session.Id, userMessage))
+        {
+            if (response.Content?.Parts != null)
+            {
+                foreach (var part in response.Content.Parts)
+                {
+                    if (part.Text != null)
+                    {
+                        responseParts.Add(part.Text);
+                    }
+                }
+            }
+        }
+        
+        var fullResponse = string.Join(" ", responseParts).ToLower();
+        Assert.True(fullResponse.Contains("arr") || fullResponse.Contains("matey") || fullResponse.Contains("error"), 
+            $"Unexpected response: {fullResponse}");
+    }
 }

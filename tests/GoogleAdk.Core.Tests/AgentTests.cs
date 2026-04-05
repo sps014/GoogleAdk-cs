@@ -207,4 +207,54 @@ public class AgentTests
 
         Assert.Equal("root", grandchild.RootAgent.Name);
     }
+
+    [Fact]
+    public void SequentialAgentConfig_Instantiates()
+    {
+        var config = new SequentialAgentConfig { Name = "seq-test" };
+        var agent = new SequentialAgent(config);
+        Assert.Equal("seq-test", agent.Name);
+    }
+
+    [Fact]
+    public void ParallelAgentConfig_Instantiates()
+    {
+        var config = new ParallelAgentConfig { Name = "par-test" };
+        var agent = new ParallelAgent(config);
+        Assert.Equal("par-test", agent.Name);
+    }
+
+    [Fact]
+    public void LlmAgentConfig_StaticInstruction()
+    {
+        var content = new Content { Role = "system", Parts = new List<Part> { new Part { Text = "You are a helpful assistant." } } };
+        var config = new LlmAgentConfig
+        {
+            Name = "llm-test",
+            StaticInstruction = content
+        };
+        var agent = new LlmAgent(config);
+        Assert.Equal(content, agent.StaticInstruction);
+    }
+
+    [Fact]
+    public void RunConfig_Properties_Populate()
+    {
+        var config = new RunConfig
+        {
+            MaxLlmCalls = 10,
+            SupportCfc = true,
+            SaveLiveBlob = true,
+            EnableAffectiveDialog = true,
+            SpeechConfig = new SpeechConfig(),
+            ResponseModalities = new List<string> { "AUDIO" }
+        };
+
+        Assert.Equal(10, config.MaxLlmCalls);
+        Assert.True(config.SupportCfc);
+        Assert.True(config.SaveLiveBlob);
+        Assert.True(config.EnableAffectiveDialog);
+        Assert.NotNull(config.SpeechConfig);
+        Assert.Contains("AUDIO", config.ResponseModalities);
+    }
 }

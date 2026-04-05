@@ -5,11 +5,19 @@ using System.Threading.Channels;
 namespace GoogleAdk.Core.Agents;
 
 /// <summary>
+/// Configuration for a parallel agent.
+/// </summary>
+public class ParallelAgentConfig : BaseAgentConfig
+{
+}
+
+/// <summary>
 /// A shell agent that runs its sub-agents in parallel with isolated branches.
 /// Useful for running different algorithms simultaneously or generating multiple responses.
 /// </summary>
 public class ParallelAgent : BaseAgent
 {
+    public ParallelAgent(ParallelAgentConfig config) : base(config) { }
     public ParallelAgent(BaseAgentConfig config) : base(config) { }
 
     protected override async IAsyncEnumerable<Event> RunAsyncImpl(

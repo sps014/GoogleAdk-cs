@@ -26,7 +26,6 @@ public class LlmRegistryTests
     [Fact]
     public void LlmRegistry_ResolvesRegisteredModel()
     {
-        LlmRegistry.Clear();
         LlmRegistry.Register(model => new FakeLlm(model), new[] { "fake-.*" });
 
         var instance = LlmRegistry.NewLlm("fake-1");

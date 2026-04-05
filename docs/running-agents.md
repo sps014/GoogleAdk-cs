@@ -92,7 +92,7 @@ You can launch the dashboard using a single line of code via `AdkServer.RunAsync
 using GoogleAdk.DevServer;
 
 // Ensure your agent is fully configured
-var myComplexAgent = new SequentialAgent(new BaseAgentConfig { /* ... */ });
+var myComplexAgent = new SequentialAgent(new SequentialAgentConfig { /* ... */ });
 
 // Launch the interactive dashboard application
 // The browser will automatically open to http://localhost:<port>
@@ -113,6 +113,36 @@ if (args.Contains("--web"))
 
 // Fallback to standard Console execution
 await RunConsoleAppAsync(agent);
+```
+
+## Advanced Run Configurations
+
+The `RunConfig` provides fine-grained control over execution behavior, multimodality, live sessions, and context limits.
+
+```csharp
+var runnerConfig = new RunnerConfig
+{
+    AppName = "production_app",
+    Agent = myAgent,
+    RunConfig = new RunConfig
+    {
+        // Limits total LLM calls per run to prevent runaway recursion
+        MaxLlmCalls = 10,
+        
+        // Halts execution on any tool call, allowing client-side execution
+        PauseOnToolCalls = true,
+        
+        // Configures audio response and speech configurations
+        ResponseModalities = ["AUDIO"],
+        SpeechConfig = new SpeechConfig(),
+        
+        // Allows saving bidirectional audio/video payloads into session storage
+        SaveLiveBlob = true,
+        
+        // Automatically fetch recent session events upon start
+        GetSessionConfig = new GetSessionConfig { NumRecentEvents = 50 }
+    }
+};
 ```
 
 ## ADK API server and streaming

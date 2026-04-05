@@ -40,7 +40,6 @@ public class ModelRegistryE2eTests
     [Fact]
     public async Task ModelRegistry_ResolvesModelNameInAgent()
     {
-        LlmRegistry.Clear();
         var llm = new RegistryLlm("fake-1");
         LlmRegistry.Register(_ => llm, new[] { "fake-.*" });
 
@@ -67,6 +66,5 @@ public class ModelRegistryE2eTests
         await foreach (var _ in runner.RunAsync("user-1", session.Id, userMessage)) { }
 
         Assert.True(llm.WasCalled);
-        LlmRegistry.Clear();
     }
 }

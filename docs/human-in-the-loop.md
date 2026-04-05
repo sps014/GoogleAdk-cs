@@ -11,22 +11,24 @@ The confirmation pattern is a dialogue loop: the agent emits a `ConfirmationRequ
 ```csharp
 using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Agents;
+using GoogleAdk.Models.Gemini;
 
 // 1. Configure the agent with potentially sensitive tools
+var model = GeminiModelFactory.Create("gemini-2.5-flash");
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "time_off_agent",
-    Model = "gemini-2.5-flash",
-    Instruction = "Use the 'reimburse' tool for expense reimbursements.",
-    Tools = [ RequireConfirmationTools.ReimburseTool ] // Requires confirmation via Security Plugin
+    Model = model,
+    Instruction = "Use the 'request_time_off' tool for time off requests.",
+    Tools = [ RequireConfirmationTools.RequestTimeOffTool ]
 });
 
 var runner = new InMemoryRunner("hitl-sample", agent);
 var session = await runner.SessionService.CreateSessionAsync(new CreateSessionRequest { AppName = "hitl-sample", UserId = "user-1" });
 
-var userMessage = new Content { Role = "user", Parts = [new Part { Text = "Reimburse $120." }] };
+var userMessage = new Content { Role = "user", Parts = [new Part { Text = "Request 5 days off." }] };
 
-// 2. Execute. The agent will attempt to call the reimburse tool and pause.
+// 2. Execute. The agent will attempt to call the request_time_off tool and pause.
 await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
 {
     foreach (var part in evt.Content.Parts)
@@ -72,18 +74,19 @@ await foreach (var evt in runner.RunAsync("user-1", session.Id, userMessage))
 }
 
 
-/// <summary>Reimburse the employee for the given amount.</summary>
-/// <param name="amount">Dollar amount to reimburse.</param>
-[FunctionTool(Name = "reimburse")]
-static object? Reimburse(int amount)
+/// <summary>Request time off for the employee.</summary>
+/// <param name="days">Number of days requested.</param>
+/// <param name="context">Agent context used for confirmation flow.</param>
+[FunctionTool(Name = "request_time_off", RequireConfirmation = true)]
+static object? RequestTimeOff(int days, AgentContext context)
 {
-    if (amount <= 0)
-        return new Dictionary<string, object?> { ["status"] = "Invalid reimbursement amount." };
+    if (days <= 0)
+        return new Dictionary<string, object?> { ["status"] = "Invalid days to request." };
 
     return new Dictionary<string, object?>
     {
-        ["status"] = "ok",
-        ["amount"] = amount
+        ["status"] = "pending_approval",
+        ["requested_days"] = days
     };
 }
 ```

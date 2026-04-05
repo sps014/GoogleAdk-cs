@@ -38,13 +38,19 @@ public class AgentLoader
         EnsureLoaded();
         if (!_cache.TryGetValue(appName, out var entry))
             throw new KeyNotFoundException($"Agent '{appName}' not found. Available: {string.Join(", ", _cache.Keys)}");
-        return entry.Agent;
+        return entry.Agent.Value;
     }
 
     /// <summary>Registers an agent directly (useful for programmatic setup).</summary>
     public void Register(string name, BaseAgent agent)
     {
-        _cache[name] = new AgentEntry(name, agent, null);
+        _cache[name] = new AgentEntry(name, new Lazy<BaseAgent>(() => agent), null);
+    }
+
+    /// <summary>Registers an agent factory for lazy initialization.</summary>
+    public void Register(string name, Func<BaseAgent> factory)
+    {
+        _cache[name] = new AgentEntry(name, new Lazy<BaseAgent>(factory), null);
     }
 
     private void EnsureLoaded()
@@ -76,9 +82,9 @@ public class AgentLoader
         {
             try
             {
-                var agent = LoadAgentFromAssembly(path);
-                if (agent != null)
-                    _cache[name] = new AgentEntry(name, agent, path);
+                var factory = CreateAgentFactoryFromAssembly(path);
+                if (factory != null)
+                    _cache[name] = new AgentEntry(name, new Lazy<BaseAgent>(factory), path);
             }
             catch (Exception ex)
             {
@@ -87,30 +93,33 @@ public class AgentLoader
         }
     }
 
-    private static BaseAgent? LoadAgentFromAssembly(string dllPath)
+    private static Func<BaseAgent>? CreateAgentFactoryFromAssembly(string dllPath)
     {
-        var context = new System.Runtime.Loader.AssemblyLoadContext(
-            Path.GetFileNameWithoutExtension(dllPath), isCollectible: false);
-        var assembly = context.LoadFromAssemblyPath(dllPath);
-
-        foreach (var type in assembly.GetExportedTypes())
+        return () =>
         {
-            // Look for static "RootAgent" property
-            var prop = type.GetProperty("RootAgent",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            if (prop != null && typeof(BaseAgent).IsAssignableFrom(prop.PropertyType))
-                return (BaseAgent?)prop.GetValue(null);
+            var context = new System.Runtime.Loader.AssemblyLoadContext(
+                Path.GetFileNameWithoutExtension(dllPath), isCollectible: false);
+            var assembly = context.LoadFromAssemblyPath(dllPath);
 
-            // Look for static "CreateRootAgent()" method
-            var method = type.GetMethod("CreateRootAgent",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
-                Type.EmptyTypes);
-            if (method != null && typeof(BaseAgent).IsAssignableFrom(method.ReturnType))
-                return (BaseAgent?)method.Invoke(null, null);
-        }
+            foreach (var type in assembly.GetExportedTypes())
+            {
+                // Look for static "RootAgent" property
+                var prop = type.GetProperty("RootAgent",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (prop != null && typeof(BaseAgent).IsAssignableFrom(prop.PropertyType))
+                    return (BaseAgent)prop.GetValue(null)!;
 
-        return null;
+                // Look for static "CreateRootAgent()" method
+                var method = type.GetMethod("CreateRootAgent",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                    Type.EmptyTypes);
+                if (method != null && typeof(BaseAgent).IsAssignableFrom(method.ReturnType))
+                    return (BaseAgent)method.Invoke(null, null)!;
+            }
+
+            throw new InvalidOperationException($"No RootAgent property or CreateRootAgent() method found in {dllPath}");
+        };
     }
 
-    private record AgentEntry(string Name, BaseAgent Agent, string? AssemblyPath);
+    private record AgentEntry(string Name, Lazy<BaseAgent> Agent, string? AssemblyPath);
 }
