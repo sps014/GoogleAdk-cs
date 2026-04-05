@@ -14,13 +14,20 @@ public sealed class SpannerQueryTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
-        if (!args.TryGetValue("instanceId", out var instanceIdObj) || instanceIdObj is not string instanceId)
+
+        var instanceId = args.TryGetValue("instanceId", out var instanceIdObj) ? FunctionToolArgs.Get<string>(instanceIdObj) : null;
+        if (string.IsNullOrEmpty(instanceId))
             return new Dictionary<string, object?> { ["error"] = "instanceId is required." };
-        if (!args.TryGetValue("databaseId", out var databaseIdObj) || databaseIdObj is not string databaseId)
+
+        var databaseId = args.TryGetValue("databaseId", out var databaseIdObj) ? FunctionToolArgs.Get<string>(databaseIdObj) : null;
+        if (string.IsNullOrEmpty(databaseId))
             return new Dictionary<string, object?> { ["error"] = "databaseId is required." };
-        if (!args.TryGetValue("query", out var queryObj) || queryObj is not string query)
+
+        var query = args.TryGetValue("query", out var queryObj) ? FunctionToolArgs.Get<string>(queryObj) : null;
+        if (string.IsNullOrEmpty(query))
             return new Dictionary<string, object?> { ["error"] = "query is required." };
 
         string connectionString = $"Data Source=projects/{projectId}/instances/{instanceId}/databases/{databaseId}";

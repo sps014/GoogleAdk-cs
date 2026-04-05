@@ -13,12 +13,15 @@ public sealed class ApiHubTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
-        if (!args.TryGetValue("location", out var locationObj) || locationObj is not string location)
+
+        var location = args.TryGetValue("location", out var locationObj) ? FunctionToolArgs.Get<string>(locationObj) : null;
+        if (string.IsNullOrEmpty(location))
             return new Dictionary<string, object?> { ["error"] = "location is required." };
 
-        var query = args.GetValueOrDefault("query")?.ToString() ?? "";
+        var query = args.TryGetValue("query", out var qObj) ? FunctionToolArgs.Get<string>(qObj) : "";
 
         try
         {

@@ -14,9 +14,12 @@ public sealed class GoogleApiTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("apiName", out var apiNameObj) || apiNameObj is not string apiName)
+        var apiName = args.TryGetValue("apiName", out var apiNameObj) ? FunctionToolArgs.Get<string>(apiNameObj) : null;
+        if (string.IsNullOrEmpty(apiName))
             return new Dictionary<string, object?> { ["error"] = "apiName is required." };
-        if (!args.TryGetValue("apiVersion", out var apiVersionObj) || apiVersionObj is not string apiVersion)
+
+        var apiVersion = args.TryGetValue("apiVersion", out var apiVersionObj) ? FunctionToolArgs.Get<string>(apiVersionObj) : null;
+        if (string.IsNullOrEmpty(apiVersion))
             return new Dictionary<string, object?> { ["error"] = "apiVersion is required." };
 
         try

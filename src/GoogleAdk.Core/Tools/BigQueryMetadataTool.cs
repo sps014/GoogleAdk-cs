@@ -13,11 +13,12 @@ public sealed class BigQueryMetadataTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
 
-        var datasetId = args.GetValueOrDefault("datasetId")?.ToString();
-        var tableId = args.GetValueOrDefault("tableId")?.ToString();
+        var datasetId = args.TryGetValue("datasetId", out var dObj) ? FunctionToolArgs.Get<string>(dObj) : null;
+        var tableId = args.TryGetValue("tableId", out var tObj) ? FunctionToolArgs.Get<string>(tObj) : null;
 
         try
         {

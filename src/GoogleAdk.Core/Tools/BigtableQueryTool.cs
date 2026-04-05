@@ -14,15 +14,20 @@ public sealed class BigtableQueryTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
-        if (!args.TryGetValue("instanceId", out var instanceIdObj) || instanceIdObj is not string instanceId)
+
+        var instanceId = args.TryGetValue("instanceId", out var instanceIdObj) ? FunctionToolArgs.Get<string>(instanceIdObj) : null;
+        if (string.IsNullOrEmpty(instanceId))
             return new Dictionary<string, object?> { ["error"] = "instanceId is required." };
-        if (!args.TryGetValue("tableId", out var tableIdObj) || tableIdObj is not string tableId)
+
+        var tableId = args.TryGetValue("tableId", out var tableIdObj) ? FunctionToolArgs.Get<string>(tableIdObj) : null;
+        if (string.IsNullOrEmpty(tableId))
             return new Dictionary<string, object?> { ["error"] = "tableId is required." };
-        
-        var rowKey = args.GetValueOrDefault("rowKey")?.ToString();
-        var rowPrefix = args.GetValueOrDefault("rowPrefix")?.ToString();
+
+        var rowKey = args.TryGetValue("rowKey", out var rkObj) ? FunctionToolArgs.Get<string>(rkObj) : null;
+        var rowPrefix = args.TryGetValue("rowPrefix", out var rpObj) ? FunctionToolArgs.Get<string>(rpObj) : null;
         var limitObj = args.GetValueOrDefault("limit");
         
         int limit = 10;

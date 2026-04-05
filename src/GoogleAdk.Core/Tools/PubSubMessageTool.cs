@@ -14,11 +14,16 @@ public sealed class PubSubMessageTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
-        if (!args.TryGetValue("topicId", out var topicIdObj) || topicIdObj is not string topicId)
+
+        var topicId = args.TryGetValue("topicId", out var topicIdObj) ? FunctionToolArgs.Get<string>(topicIdObj) : null;
+        if (string.IsNullOrEmpty(topicId))
             return new Dictionary<string, object?> { ["error"] = "topicId is required." };
-        if (!args.TryGetValue("message", out var messageObj) || messageObj is not string message)
+
+        var message = args.TryGetValue("message", out var messageObj) ? FunctionToolArgs.Get<string>(messageObj) : null;
+        if (string.IsNullOrEmpty(message))
             return new Dictionary<string, object?> { ["error"] = "message is required." };
 
         try

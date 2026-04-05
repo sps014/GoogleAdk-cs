@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
     <PackageReference Include="Google.Apis.Discovery.v1" Version="1.68.0" />
     <PackageReference Include="Google.Cloud.ApiHub.V1" Version="1.2.0" />
     <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />

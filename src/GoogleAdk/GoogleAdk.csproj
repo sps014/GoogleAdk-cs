@@ -34,6 +34,14 @@
   <!-- Union of PackageReference across bundled projects so the nuspec lists real third-party dependencies. -->
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
+    <PackageReference Include="Google.Apis.Discovery.v1" Version="1.68.0" />
+    <PackageReference Include="Google.Cloud.ApiHub.V1" Version="1.2.0" />
+    <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
+    <PackageReference Include="Google.Cloud.Bigtable.V2" Version="3.26.0" />
+    <PackageReference Include="Google.Cloud.DiscoveryEngine.V1" Version="1.13.0" />
+    <PackageReference Include="Google.Cloud.PubSub.V1" Version="3.33.0" />
+    <PackageReference Include="Google.Cloud.Spanner.Data" Version="5.12.0" />
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.14.0" />
     <PackageReference Include="Google.GenAI" Version="1.6.1" />
     <PackageReference Include="Google_GenerativeAI.Microsoft" Version="3.6.4" />
@@ -48,7 +56,6 @@
     <PackageReference Include="Spectre.Console" Version="0.49.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.5" />
-    <PackageReference Include="Google.Cloud.DiscoveryEngine.V1" Version="1.13.0" />
   </ItemGroup>
 
   <ItemGroup>

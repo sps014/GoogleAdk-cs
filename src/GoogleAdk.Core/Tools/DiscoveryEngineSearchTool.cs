@@ -30,7 +30,8 @@ public sealed class DiscoveryEngineSearchTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("query", out var queryObj) || queryObj is not string query)
+        var query = args.TryGetValue("query", out var queryObj) ? FunctionToolArgs.Get<string>(queryObj) : null;
+        if (string.IsNullOrEmpty(query))
         {
             return new Dictionary<string, object?> { ["error"] = "Query is required." };
         }

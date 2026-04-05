@@ -13,10 +13,12 @@ public sealed class BigQueryQueryTool : BaseTool
 
     public override async Task<object?> RunAsync(Dictionary<string, object?> args, AgentContext context)
     {
-        if (!args.TryGetValue("projectId", out var projectIdObj) || projectIdObj is not string projectId)
+        var projectId = args.TryGetValue("projectId", out var projectIdObj) ? FunctionToolArgs.Get<string>(projectIdObj) : null;
+        if (string.IsNullOrEmpty(projectId))
             return new Dictionary<string, object?> { ["error"] = "projectId is required." };
 
-        if (!args.TryGetValue("query", out var queryObj) || queryObj is not string query)
+        var query = args.TryGetValue("query", out var queryObj) ? FunctionToolArgs.Get<string>(queryObj) : null;
+        if (string.IsNullOrEmpty(query))
             return new Dictionary<string, object?> { ["error"] = "query is required." };
 
         try
