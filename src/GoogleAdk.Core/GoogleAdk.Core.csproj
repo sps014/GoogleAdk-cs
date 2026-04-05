@@ -17,6 +17,7 @@
     <PackageReference Include="Google.Cloud.PubSub.V1" Version="3.33.0" />
     <PackageReference Include="Google.Cloud.Spanner.Data" Version="5.12.0" />
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.14.0" />
+    <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
   </ItemGroup>
 

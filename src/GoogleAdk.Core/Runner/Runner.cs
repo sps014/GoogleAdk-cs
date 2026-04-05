@@ -380,19 +380,15 @@ public class Runner
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 var mimeType = part.InlineData.MimeType ?? "application/octet-stream";
-                var extension = mimeType switch
+                var extension = "";
+                try
                 {
-                    "text/plain" => ".txt",
-                    "text/html" => ".html",
-                    "application/json" => ".json",
-                    "application/xml" => ".xml",
-                    "image/png" => ".png",
-                    "image/jpeg" => ".jpeg",
-                    "image/gif" => ".gif",
-                    "application/pdf" => ".pdf",
-                    "application/msword" => ".doc",
-                    _ => ""
-                };
+                    extension = MimeTypes.MimeTypeMap.GetExtension(mimeType, throwErrorIfNotFound: false);
+                }
+                catch
+                {
+                    extension = "";
+                }
                 fileName = $"artifact_{invocationId}_{i}{extension}";
             }
 
