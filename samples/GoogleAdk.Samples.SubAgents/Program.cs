@@ -96,4 +96,7 @@ var initialState = new Dictionary<string, object?>
     { "previous_issue_resolved", false }
 };
 
-await AdkServer.RunAsync(receptionist, initialState: initialState);
+await AdkServer.RunAsync(receptionist, options => 
+{
+    options.InitialState = initialState;
+});

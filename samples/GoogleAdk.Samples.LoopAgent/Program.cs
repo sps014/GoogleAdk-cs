@@ -147,7 +147,7 @@ static async Task RunConsoleAppAsync(LoopAgent refinementLoop)
             Console.ForegroundColor = isDrafter ? ConsoleColor.Cyan : ConsoleColor.Magenta;
             var emoji = isDrafter ? "✏️" : "🔍";
 
-            Console.WriteLine($"  {emoji} [{evt.Author.ToUpper()}]:");
+            Console.WriteLine($"  {emoji} [{evt.Author!.ToUpper()}]:");
             Console.WriteLine($"  {text}\n");
 
             lastAuthor = evt.Author;

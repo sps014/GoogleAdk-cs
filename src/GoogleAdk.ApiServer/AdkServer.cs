@@ -22,29 +22,35 @@ namespace GoogleAdk.ApiServer;
 public static class AdkServer
 {
     /// <summary>
-    /// Starts the ADK dev server with the UI, serving the specified root agent.
+    /// Starts the ADK dev server with the UI, serving the specified root agent with default options.
     /// </summary>
-    public static async Task RunAsync(
-        BaseAgent rootAgent,
-        IBaseArtifactService? artifactService = null,
-        IBaseMemoryService? memoryService = null,
-        int port = 8080,
-        string host = "localhost",
-        bool showAdkWebUI = true,
-        bool showSwaggerUI = true,
-        bool enableA2a = false,
-        Dictionary<string, object?>? initialState = null,
-        bool enableCloudTracing = false)
+    public static Task RunAsync(BaseAgent rootAgent) 
+        => RunAsync(rootAgent, new AdkServerOptions());
+
+    /// <summary>
+    /// Starts the ADK dev server with the UI, serving the specified root agent with configured options.
+    /// </summary>
+    public static Task RunAsync(BaseAgent rootAgent, Action<AdkServerOptions> configureOptions)
+    {
+        var options = new AdkServerOptions();
+        configureOptions?.Invoke(options);
+        return RunAsync(rootAgent, options);
+    }
+
+    /// <summary>
+    /// Starts the ADK dev server with the UI, serving the specified root agent with explicitly provided options.
+    /// </summary>
+    public static async Task RunAsync(BaseAgent rootAgent, AdkServerOptions options)
     {
         var agentLoader = new AgentLoader(".");
         agentLoader.Register(rootAgent.Name, rootAgent);
 
         var sessionService = new InMemorySessionService();
-        artifactService ??= new InMemoryArtifactService();
+        var artifactService = options.ArtifactService ?? new InMemoryArtifactService();
 
         var builder = WebApplication.CreateBuilder();
 
-        if (enableCloudTracing)
+        if (options.EnableCloudTracing)
         {
             builder.Services.AddOpenTelemetry()
                 .WithTracing(tracing => tracing
@@ -54,7 +60,7 @@ public static class AdkServer
 
         builder.Services.AddSingleton(agentLoader);
         builder.Services.AddSingleton<BaseSessionService>(sessionService);
-        builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService, artifactService, memoryService, initialState));
+        builder.Services.AddSingleton(new RunnerManager(agentLoader, sessionService, artifactService, options.MemoryService, options.InitialState));
         builder.Services.AddSingleton(new InMemoryTraceCollector());
 
         builder.Services.AddEndpointsApiExplorer();
@@ -63,15 +69,24 @@ public static class AdkServer
             c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "ADK Server API", Version = "v1" });
         });
 
-        builder.Services.AddCors(options =>
+        builder.Services.AddCors(corsOptions =>
         {
-            options.AddDefaultPolicy(policy =>
-                policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+            corsOptions.AddDefaultPolicy(policy =>
+            {
+                if (options.ConfigureCors != null)
+                {
+                    options.ConfigureCors(policy);
+                }
+                else
+                {
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                }
+            });
         });
 
         var app = builder.Build();
 
-        if (showSwaggerUI)
+        if (options.ShowSwaggerUI)
         {
             app.UseSwagger(c =>
             {
@@ -87,10 +102,10 @@ public static class AdkServer
         app.UseWebSockets();
         app.UseCors();
         app.MapAdkApi();
-        if (enableA2a)
+        if (options.EnableA2a)
             app.MapA2aApi();
 
-        if (showAdkWebUI)
+        if (options.ShowAdkWebUI)
         {
             var embeddedProvider = new EmbeddedFileProvider(
                 typeof(AdkServer).Assembly, "GoogleAdk.ApiServer.wwwroot");
@@ -109,7 +124,7 @@ public static class AdkServer
             app.MapGet("/", () => Results.Redirect("/dev-ui"));
         }
 
-        var url = $"http://{host}:{port}";
+        var url = $"http://{options.Host}:{options.Port}";
         app.Urls.Add(url);
 
         var grid = new Grid()
@@ -118,14 +133,12 @@ public static class AdkServer
 
         grid.AddRow("[bold cyan]Server[/]", $"[link={url}]{url}[/]");
 
-        if (showAdkWebUI)
-            grid.AddRow("[bold green]Dev UI[/]", $"[link={url}/dev-ui]{url}/dev-ui[/]");
 
-        if (showSwaggerUI)
+        if (options.ShowSwaggerUI)
             grid.AddRow("[bold yellow]Swagger UI[/]", $"[link={url}/swagger]{url}/swagger[/]");
         grid.AddRow("[bold magenta]Agent[/]", rootAgent.Name);
 
-        if (enableA2a)
+        if (options.EnableA2a)
             grid.AddRow("[bold blue]A2A[/]", $"[link={url}/a2a/{rootAgent.Name}/]{url}/a2a/{rootAgent.Name}/[/]");
 
         AnsiConsole.WriteLine();

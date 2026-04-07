@@ -31,4 +31,7 @@ var agent = new LlmAgent(new LlmAgentConfig
 
 // Run the server on port 8080.
 Console.WriteLine("Starting ADK server on http://localhost:8080...");
-await AdkServer.RunAsync(agent, port: 8080);
+await AdkServer.RunAsync(agent, options => 
+{
+    options.Port = 8080;
+});

@@ -14,7 +14,20 @@ The ADK includes a complete implementation of the Agent-to-Agent (A2A) protocol.
 
 You can expose any locally registered agent over HTTP so that external systems can talk to it.
 
-### Setup and Wiring
+### Quick Setup with `AdkServer`
+
+The easiest way to expose an agent over A2A is using the `AdkServer.RunAsync` utility, which automatically bootstraps the endpoints:
+
+```csharp
+using GoogleAdk.ApiServer;
+
+await AdkServer.RunAsync(myAgent, options => 
+{
+    options.EnableA2a = true;
+});
+```
+
+### Manual Setup and Wiring
 
 In your `Program.cs`, use the `AgentLoader` to register instances of your agents, then expose the endpoints using `MapA2aApi`.
 
