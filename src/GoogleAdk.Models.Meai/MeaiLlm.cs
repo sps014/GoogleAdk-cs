@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace GoogleAdk.Models.Meai;
 
@@ -254,7 +255,8 @@ public class MeaiLlm : BaseLlm
                     JsonElement schemaElement;
                     if (declaration.Parameters != null)
                     {
-                        var schemaJson = JsonSerializer.Serialize(declaration.Parameters);
+                        var jsonOpts = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+                        var schemaJson = JsonSerializer.Serialize(declaration.Parameters, jsonOpts);
                         using var doc = JsonDocument.Parse(schemaJson);
                         var sanitized = SanitizeObjectSchema(doc.RootElement);
                         schemaElement = JsonDocument.Parse(sanitized.GetRawText()).RootElement.Clone();

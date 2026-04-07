@@ -25,57 +25,35 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 
 ## ✨ Key Features
 
-- **ADK Web (development server & UI)**: Run agents with the embedded dev UI,
-  REST/WebSocket APIs, Swagger, and optional static file hosting—via
-  `AdkServer.RunAsync`, the CLI (`GoogleAdk.ApiServer`), or your own host. See
-  [Running agents](docs/running-agents.md).
-- **A2A (client + server)**: **Client** types in `src/GoogleAdk.Core/A2a`
-  (`A2aClient`, `A2aRemoteAgent`, streaming/event helpers) for calling remote
-  agents. **Server** endpoints via `MapA2aApi()` on the API host so your agent
-  speaks the [A2A protocol](https://github.com/google/A2A/). Enable A2A on the
-  dev server with `options.EnableA2a = true` in `AdkServer.RunAsync` or the CLI `--a2a`
-  flag. Details: [docs/a2a.md](docs/a2a.md).
-- **Planning**: Attach an `IPlanner` to `LlmAgent` (e.g. built-in and ReAct-style
-  planners) with natural-language planning processors in the LLM pipeline. See
-  [docs/planning.md](docs/planning.md).
-- **Prompt / context caching**: `ContextCacheConfig` on agents and apps, with
-  Gemini-backed implicit caching via `GoogleAdk.Models.Gemini` and
-  `ContextCacheRequestProcessor`. See [docs/caching.md](docs/caching.md).
-- **C# tools & source generation**: Mark static/instance methods with
-  `[FunctionTool]`; `GoogleAdk.SourceGenerators` emits partial classes with
-  schema-backed `FunctionTool` instances (XML docs required for descriptions).
-  See [docs/tools.md](docs/tools.md).
-- **MCP (Model Context Protocol)**: `GoogleAdk.Tools.Mcp` provides `McpToolset`
-  for stdio and HTTP MCP servers, dynamic tool discovery, and integration with
-  `LlmAgent` toolsets. See [docs/mcp.md](docs/mcp.md).
-- **OpenAPI-backed tools**: Generate tools from OpenAPI documents with
-  `GoogleAdk.Tools.OpenApi`. Sample: `samples/GoogleAdk.Samples.OpenApi`.
-- **Model backends**: **Gemini** (`GoogleAdk.Models.Gemini`) and **MEAI**
-  (`GoogleAdk.Models.Meai`) for providers such as Ollama and other MEAI-compatible
-  models. See [docs/models.md](docs/models.md).
-- **Sessions & persistence**: In-memory sessions in core; optional **EF Core**
-  session storage in `GoogleAdk.Sessions.EfCore`.
-- **State & memory**: Session **state** (scoped keys, `{placeholder}` injection in
-  instructions) via `State` and `RunnerConfig.InitialState` / dev server defaults;
-  **memory** via `IBaseMemoryService` with `InMemoryMemoryService` as the runner default
-  and `AgentContext` helpers (`AddSessionToMemoryAsync`, `SearchMemoryAsync`, etc.).
-  See [docs/state.md](docs/state.md) and [docs/memory.md](docs/memory.md).
-- **Evaluation & optimization**: `GoogleAdk.Evaluation` (datasets, inference,
-  LLM-as-judge scoring) and `GoogleAdk.Optimization` for systematic prompt/agent
-  improvement. See [docs/evaluation-optimization.md](docs/evaluation-optimization.md).
-- **Rich built-in tools & Google integrations**: Search, maps, Vertex AI Search,
-  Discovery Engine, URL context, code execution, artifacts, sub-agents, human-in-the-loop
-  confirmations, and more—see [docs/tools.md](docs/tools.md) and
-  [docs/features.md](docs/features.md).
-- **Orchestration & processors**: `SequentialAgent`, `ParallelAgent`, `LoopAgent`,
-  transfer-to-agent, and a configurable LLM request/response processor pipeline
-  (instructions, code execution, output schema, context compaction, etc.). See
-  [docs/orchestration.md](docs/orchestration.md).
-- **Plugins, telemetry, streaming**: Hook lifecycle with plugins, OpenTelemetry-style
-  tracing in the API server, and streaming event flows. See [docs/plugins.md](docs/plugins.md),
-  [docs/streaming.md](docs/streaming.md).
-- **Code-First Development**: Define agent logic, tools, and orchestration in C#
-  for flexibility, testability, and versioning.
+### 🧠 Intelligence & Models
+
+- **Model Backends**: Support for **Gemini** (`GoogleAdk.Models.Gemini`) and **MEAI** (`GoogleAdk.Models.Meai`) for providers like Ollama. [More info](docs/models.md).
+- **Planning**: Equip agents with ReAct-style planners via natural-language processing. [More info](docs/planning.md).
+- **Caching**: Prompt and context caching using Gemini-backed implicit caching. [More info](docs/caching.md).
+
+### 🛠️ Tools & Integrations
+
+- **C# Source Gen Tools**: Effortlessly turn methods into tools using the `[FunctionTool]` attribute. [More info](docs/tools.md).
+- **MCP Support**: Full Model Context Protocol integration with dynamic tool discovery. [More info](docs/mcp.md).
+- **OpenAPI Integration**: Generate tools seamlessly from OpenAPI specs.
+- **Built-in Tools**: Use pre-configured tools for Google Search, Maps, Vertex AI, code execution, and more. [More info](docs/features.md).
+
+### 🔄 Orchestration & Workflows
+
+- **Agent Orchestration**: Combine agents using `SequentialAgent`, `ParallelAgent`, or `LoopAgent` with customizable LLM pipelines. [More info](docs/orchestration.md).
+- **A2A Protocol**: Built-in support for Remote Agent-to-Agent communication (both Client and Server). [More info](docs/a2a.md).
+- **Plugins & Telemetry**: Lifecycle hooks, streaming events, and OpenTelemetry-style tracing. [More info](docs/plugins.md).
+
+### 💾 State & Memory
+
+- **State Management**: Flexible session state with placeholder injection for dynamic instructions. [More info](docs/state.md).
+- **Memory**: Built-in memory services and persistence options including EF Core storage. [More info](docs/memory.md).
+
+### 🚀 Development & Deployment
+
+- **Code-First Approach**: Define agents, tools, and logic in C# for great testability and versioning.
+- **ADK Web UI**: Embedded development server with a rich UI, REST/WebSocket APIs, and Swagger. [More info](docs/running-agents.md).
+- **Evaluation**: Tools for systematic prompt/agent tuning and LLM-as-judge scoring. [More info](docs/evaluation-optimization.md).
 
 ## 🚀 Installation
 
@@ -97,7 +75,7 @@ For building, evaluating, and deploying agents, follow the docs and samples:
 ### Same Features & Familiar Interface As Other ADKs:
 
 ```csharp
-//Load env variables like GOOGLE_API_KEY
+// Load env variables like GOOGLE_API_KEY
 AdkEnv.Load();
 
 var rootAgent = new LlmAgent(new LlmAgentConfig
@@ -106,12 +84,13 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
     Description = "An assistant that can search the web.",
     Model = "gemini-2.5-flash",
     Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed. If User asks about weather use the GetWeather tool",
-    Tools = [new GoogleSearchTool(), GetWeatherDataTool],  //GetWeatherDataTool is generated from GetWeatherData in format ADK expect
+    
+    // GetWeatherDataTool is generated from GetWeatherData in the format ADK expects
+    Tools = [new GoogleSearchTool(), GetWeatherDataTool]
 });
 
-await AdkServer.RunAsync(rootAgent); //creates a webserver that can launch the adk web ui and other endpoints 
-
-
+// Creates a webserver that can launch the ADK web UI and other endpoints 
+await AdkServer.RunAsync(rootAgent);
 
 /// <summary>
 /// Fetches the current weather data for a given location.
@@ -121,12 +100,10 @@ await AdkServer.RunAsync(rootAgent); //creates a webserver that can launch the a
 [FunctionTool]
 static WeatherData? GetWeatherData(string location)
 {
-    // trigger recompilation
     return new WeatherData(location, "Sunny with a chance of rainbows");
 }
+
 public record WeatherData(string Location, string Forecast);
-
-
 ```
 
 ### Development UI

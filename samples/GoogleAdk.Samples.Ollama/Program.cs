@@ -9,7 +9,7 @@ using GoogleAdk.Core.Abstractions.Models;
 
 // 1. Create the Microsoft.Extensions.AI chat client for Ollama
 // Adjust the model name to whichever model you have pulled in Ollama
-string modelName = "qwen3"; // Or "llama3.1", "mistral", "phi3", etc.
+string modelName = "gemma4:e4b"; // Or "llama3.1", "mistral", "phi3", etc.
 IChatClient ollamaClient = new OllamaChatClient(new Uri("http://localhost:11434"), modelName);
 
 // 2. Wrap it in the ADK's MeaiLlm
