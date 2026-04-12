@@ -98,6 +98,9 @@ public class LlmAgentConfig : BaseAgentConfig
     /// <summary>Generate content configuration.</summary>
     public GenerateContentConfig? GenerateContentConfig { get; set; }
 
+    /// <summary>If true, disables automatic injection of agent identity into the prompt.</summary>
+    public bool DisableIdentity { get; set; }
+
     /// <summary>Before model callbacks.</summary>
     public List<BeforeModelCallback>? BeforeModelCallbacks { get; set; }
 
@@ -169,6 +172,7 @@ public class LlmAgent : BaseAgent
     public BaseExampleProvider? ExampleProvider { get; }
     public IPlanner? Planner { get; set; }
     public GenerateContentConfig? GenerateContentConfig { get; set; }
+    public bool DisableIdentity { get; }
     public List<BeforeModelCallback> BeforeModelCallbacks { get; }
     public List<AfterModelCallback> AfterModelCallbacks { get; }
     public List<OnModelErrorCallback> OnModelErrorCallbacks { get; }
@@ -199,6 +203,7 @@ public class LlmAgent : BaseAgent
         ExampleProvider = config.ExampleProvider;
         Planner = config.Planner;
         GenerateContentConfig = config.GenerateContentConfig;
+        DisableIdentity = config.DisableIdentity;
         BeforeModelCallbacks = config.BeforeModelCallbacks ?? new();
         AfterModelCallbacks = config.AfterModelCallbacks ?? new();
         OnModelErrorCallbacks = config.OnModelErrorCallbacks ?? new();

@@ -31,6 +31,8 @@ public class BasicLlmRequestProcessor : BaseLlmRequestProcessor
                 TopP = agent.GenerateContentConfig.TopP,
                 TopK = agent.GenerateContentConfig.TopK,
                 MaxOutputTokens = agent.GenerateContentConfig.MaxOutputTokens,
+                ResponseModalities = agent.GenerateContentConfig.ResponseModalities,
+                SpeechConfig = agent.GenerateContentConfig.SpeechConfig
             };
         }
         else

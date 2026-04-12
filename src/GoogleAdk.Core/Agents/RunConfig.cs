@@ -42,7 +42,7 @@ public class RunConfig
     public SpeechConfig? SpeechConfig { get; set; }
 
     /// <summary>The output modalities. If not set, defaults to AUDIO in live contexts.</summary>
-    public List<string>? ResponseModalities { get; set; }
+    public List<Modality>? ResponseModalities { get; set; }
 
     /// <summary>Whether to support CFC (Compositional Function Calling).</summary>
     public bool SupportCfc { get; set; }

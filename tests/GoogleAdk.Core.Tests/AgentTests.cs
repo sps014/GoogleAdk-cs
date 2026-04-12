@@ -247,7 +247,7 @@ public class AgentTests
             SaveLiveBlob = true,
             EnableAffectiveDialog = true,
             SpeechConfig = new SpeechConfig(),
-            ResponseModalities = new List<string> { "AUDIO" }
+            ResponseModalities = new List<Modality> { Modality.AUDIO }
         };
 
         Assert.Equal(10, config.MaxLlmCalls);
@@ -255,6 +255,6 @@ public class AgentTests
         Assert.True(config.SaveLiveBlob);
         Assert.True(config.EnableAffectiveDialog);
         Assert.NotNull(config.SpeechConfig);
-        Assert.Contains("AUDIO", config.ResponseModalities);
+        Assert.Contains(Modality.AUDIO, config.ResponseModalities);
     }
 }

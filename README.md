@@ -36,6 +36,8 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 - **C# Source Gen Tools**: Effortlessly turn methods into tools using the `[FunctionTool]` attribute. [More info](docs/tools.md).
 - **MCP Support**: Full Model Context Protocol integration with dynamic tool discovery. [More info](docs/mcp.md).
 - **OpenAPI Integration**: Generate tools seamlessly from OpenAPI specs.
+- **Code Execution**: Run generated code within secure environments. [More info](docs/code-execution.md).
+- **Text-to-Speech (TTS)**: Generate audio directly from compatible LLMs like `gemini-2.5-flash-preview-tts`. [More info](docs/tts.md).
 - **Built-in Tools**: Use pre-configured tools for Google Search, Maps, Vertex AI, code execution, and more. [More info](docs/features.md).
 
 ### 🔄 Orchestration & Workflows

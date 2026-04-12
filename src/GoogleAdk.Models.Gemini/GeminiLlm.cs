@@ -26,6 +26,59 @@ public class GeminiLlm : MeaiLlm
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_RetrievalTool")]
     extern static void SetRetrievalTool(GenerativeModel obj, GenerativeAI.Types.Tool? value);
 
+    protected override Microsoft.Extensions.AI.ChatOptions? ConvertToMeaiOptions(LlmRequest llmRequest)
+    {
+        var options = base.ConvertToMeaiOptions(llmRequest);
+        if (options == null) return null;
+
+        var config = llmRequest.Config;
+        if (config != null)
+        {
+            if (config.ResponseModalities?.Count > 0)
+            {
+                var genConfigModalities = config.ResponseModalities
+                    .Select(m => Enum.TryParse<GenerativeAI.Types.Modality>(m.ToString(), true, out var mod) ? mod : GenerativeAI.Types.Modality.MODALITY_UNSPECIFIED)
+                    .Where(m => m != GenerativeAI.Types.Modality.MODALITY_UNSPECIFIED)
+                    .ToList();
+                
+                options.AdditionalProperties ??= new Microsoft.Extensions.AI.AdditionalPropertiesDictionary();
+                options.AdditionalProperties.Remove("responseModalities");
+                options.AdditionalProperties["ResponseModalities"] = genConfigModalities;
+            }
+
+            options.AdditionalProperties?.Remove("speechConfig");
+
+            options.RawRepresentationFactory = _ =>
+            {
+                var genConfig = new GenerativeAI.Types.GenerationConfig();
+
+                if (config.SpeechConfig != null)
+                {
+                    var adkSpeechConfig = config.SpeechConfig;
+                    var genSpeechConfig = new GenerativeAI.Types.SpeechConfig();
+
+                    if (adkSpeechConfig.VoiceConfig != null)
+                    {
+                        var voiceConfig = new GenerativeAI.Types.VoiceConfig();
+                        if (adkSpeechConfig.VoiceConfig.PrebuiltVoiceConfig != null)
+                        {
+                            voiceConfig.PrebuiltVoiceConfig = new GenerativeAI.Types.PrebuiltVoiceConfig
+                            {
+                                VoiceName = adkSpeechConfig.VoiceConfig.PrebuiltVoiceConfig.VoiceName
+                            };
+                        }
+                        genSpeechConfig.VoiceConfig = voiceConfig;
+                    }
+                    // genConfig.SpeechConfig = genSpeechConfig;
+                }
+
+                return genConfig;
+            };
+        }
+
+        return options;
+    }
+
     public override async IAsyncEnumerable<LlmResponse> GenerateContentAsync(
         LlmRequest llmRequest,
         bool stream = false,

@@ -29,6 +29,6 @@ public class CodeExecutionRequestProcessorTests
         await foreach (var _ in processor.RunAsync(invocationContext, llmRequest)) { }
 
         Assert.NotNull(llmRequest.Config?.Tools);
-        Assert.Contains(llmRequest.Config!.Tools!, t => t.GoogleSearch != null);
+        Assert.Contains(llmRequest.Config!.Tools!, t => t.CodeExecution != null);
     }
 }

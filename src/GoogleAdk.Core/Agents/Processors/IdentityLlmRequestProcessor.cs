@@ -17,6 +17,9 @@ public class IdentityLlmRequestProcessor : BaseLlmRequestProcessor
     {
         await Task.CompletedTask;
 
+        if (invocationContext.Agent is LlmAgent llmAgent && llmAgent.DisableIdentity)
+            yield break;
+
         var agent = invocationContext.Agent;
         var instructions = new List<string>
         {

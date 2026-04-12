@@ -67,7 +67,7 @@ public class MeaiLlm : BaseLlm
                 // premature tool execution. Only the final aggregated response
                 // (yielded after the stream) triggers execution.
                 // This mirrors the Python StreamingResponseAggregator behavior.
-                if (update.Contents != null)
+                        if (update.Contents != null)
                 {
                     foreach (var content in update.Contents)
                     {
@@ -89,6 +89,28 @@ public class MeaiLlm : BaseLlm
                                 {
                                     Role = "model",
                                     Parts = new List<Part> { fcPart }
+                                },
+                                Partial = true,
+                                RawRepresentation = update.RawRepresentation,
+                            };
+                        }
+                        else if (content is DataContent dataContent)
+                        {
+                            var dataPart = new Part
+                            {
+                                InlineData = new InlineData
+                                {
+                                    MimeType = dataContent.MediaType,
+                                    Data = Convert.ToBase64String(dataContent.Data.ToArray())
+                                }
+                            };
+                            fcParts.Add(dataPart);
+                            yield return new LlmResponse
+                            {
+                                Content = new Content
+                                {
+                                    Role = "model",
+                                    Parts = new List<Part> { dataPart }
                                 },
                                 Partial = true,
                                 RawRepresentation = update.RawRepresentation,
@@ -144,7 +166,22 @@ public class MeaiLlm : BaseLlm
         // Add system instruction
         if (llmRequest.Config?.SystemInstruction != null)
         {
-            messages.Add(new ChatMessage(ChatRole.System, llmRequest.Config.SystemInstruction));
+            // Temporary workaround: gemini-2.5-flash-preview-tts rejects system instructions (500 Internal)
+            // and rejects multi-turn chat (400 Invalid Argument). We merge the system instruction 
+            // into the first user message instead of passing it separately.
+            if (llmRequest.Model?.Contains("-tts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var firstUserContent = llmRequest.Contents.FirstOrDefault(c => c.Role?.ToLowerInvariant() == "user");
+                var firstPart = firstUserContent?.Parts?.FirstOrDefault(p => p.Text != null);
+                if (firstPart != null)
+                {
+                    firstPart.Text = llmRequest.Config.SystemInstruction + "\n\n" + firstPart.Text;
+                }
+            }
+            else
+            {
+                messages.Add(new ChatMessage(ChatRole.System, llmRequest.Config.SystemInstruction));
+            }
         }
 
         // Convert contents
@@ -221,7 +258,7 @@ public class MeaiLlm : BaseLlm
     /// <summary>
     /// Converts ADK config to MEAI ChatOptions.
     /// </summary>
-    private ChatOptions? ConvertToMeaiOptions(LlmRequest llmRequest)
+    protected virtual ChatOptions? ConvertToMeaiOptions(LlmRequest llmRequest)
     {
         var config = llmRequest.Config;
         if (config == null) return new ChatOptions { ModelId = Model };
@@ -235,6 +272,25 @@ public class MeaiLlm : BaseLlm
             TopK = config.TopK,
             StopSequences = config.StopSequences,
         };
+
+        // Map additional properties like ResponseModalities or SpeechConfig
+        var additionalProperties = new AdditionalPropertiesDictionary();
+        if (config.ResponseModalities is { Count: > 0 })
+        {
+            additionalProperties["responseModalities"] = config.ResponseModalities.Select(m => m.ToString()).ToList();
+        }
+        if (config.SpeechConfig != null)
+        {
+            var jsonNode = JsonSerializer.SerializeToNode(config.SpeechConfig, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+            if (jsonNode != null)
+            {
+                additionalProperties["speechConfig"] = jsonNode;
+            }
+        }
+        if (additionalProperties.Count > 0)
+        {
+            options.AdditionalProperties = additionalProperties;
+        }
 
         // Convert tool declarations to MEAI tools
         if (llmRequest.ToolsDict.Count > 0)
@@ -303,6 +359,16 @@ public class MeaiLlm : BaseLlm
                                 Name = functionCall.Name,
                                 Args = ConvertArgsToDictionary(functionCall.Arguments),
                                 Id = functionCall.CallId,
+                            }
+                        });
+                        break;
+                    case DataContent dataContent:
+                        parts.Add(new Part
+                        {
+                            InlineData = new InlineData
+                            {
+                                MimeType = dataContent.MediaType,
+                                Data = Convert.ToBase64String(dataContent.Data.ToArray())
                             }
                         });
                         break;
