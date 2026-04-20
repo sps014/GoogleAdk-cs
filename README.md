@@ -5,7 +5,7 @@
 
 <html>
     <h2 align="center">
-      <img src="https://raw.githubusercontent.com/google/adk-python/main/assets/agent-development-kit.png" width="256"/>
+      <img src="docs/assets/agent-development-kit.png" width="256"/>
     </h2>
     <h3 align="center">
       An open-source, code-first .NET toolkit for building, evaluating, and deploying sophisticated AI agents with flexibility and control.
@@ -38,7 +38,7 @@ debugging, versioning, and deployment anywhere – from your laptop to the cloud
 - **OpenAPI Integration**: Generate tools seamlessly from OpenAPI specs.
 - **Code Execution**: Run generated code within secure environments. [More info](docs/code-execution.md).
 - **Text-to-Speech (TTS)**: Generate audio directly from compatible LLMs like `gemini-2.5-flash-preview-tts`. [More info](docs/tts.md).
-- **Built-in Tools**: Use pre-configured tools for Google Search, Maps, Vertex AI, code execution, and more. [More info](docs/features.md).
+- **Built-in Tools**: Use pre-configured tools for Computer Use (Browser Automation), Cloud Spanner (Query and Vector Search), BigQuery, Google Search, Vertex AI, code execution, and more. [More info](docs/features.md).
 
 ### 🔄 Orchestration & Workflows
 
@@ -113,7 +113,7 @@ public record WeatherData(string Location, string Forecast);
 Same as the Python Development UI. A built-in development UI to help you test,
 evaluate, debug, and showcase your agent(s).
 
-<img  alt="Image" src="https://github.com/user-attachments/assets/1f8db230-b8f2-4b3c-85c8-54c32ea9e379" />
+<img alt="Image" src="docs/assets/adk-web-dev-ui-function-call.png" />
 
 ### Evaluate Agents
 

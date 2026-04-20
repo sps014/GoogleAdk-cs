@@ -5,6 +5,13 @@ repo_name: sps014/GoogleAdk-cs
 
 theme:
   name: material
+  font:
+    text: Roboto
+    code: Roboto Mono
+  logo: assets/agent-development-kit.png
+  favicon: assets/agent-development-kit.png
+  icon:
+    repo: fontawesome/brands/github
   features:
     - navigation.sections
     - toc.integrate
@@ -16,17 +23,17 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: white
+      accent: white
       toggle:
-        icon: material/weather-night
+        icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: grey
+      accent: grey
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-4
         name: Switch to light mode
 
 markdown_extensions:

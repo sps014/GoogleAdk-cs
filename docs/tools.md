@@ -10,8 +10,10 @@ The ADK comes with several built-in tools ready to be used:
 - **`VertexAiSearchTool`**: Connects to Google Cloud Vertex AI Search (Discovery Engine) data stores.
 - **`AuthTool`**: Triggers a credential request flow for authenticating users.
 - **`AgentTool`**: Wraps an entire sub-agent as a callable tool, enabling hierarchical agent orchestration.
+- **`ComputerUseTool`**: Wraps computer control functions for use with LLMs, automating tasks like clicking, typing, and scrolling.
 - **`BigQueryQueryTool` & `BigQueryMetadataTool`**: Execute queries and fetch schema metadata from Google Cloud BigQuery.
 - **`SpannerQueryTool`**: Execute SQL queries against Google Cloud Spanner databases.
+- **`SpannerSearchTool`**: Perform vector similarity search in a Cloud Spanner database using a text query.
 - **`BigtableQueryTool`**: Read rows and ranges from Google Cloud Bigtable.
 - **`PubSubMessageTool`**: Publish messages to Google Cloud Pub/Sub topics.
 - **`GoogleApiTool`**: Dynamically call Google Cloud APIs using the Discovery API.
@@ -43,13 +45,15 @@ var agent = new LlmAgent(new LlmAgentConfig
 
 The **`SpannerQueryTool`** allows the LLM to execute SQL queries on a Spanner database. It requires `projectId`, `instanceId`, `databaseId`, and `query`.
 
+The **`SpannerSearchTool`** performs vector similarity search using a text query. It requires `projectId`, `instanceId`, `databaseId`, `tableName`, `query`, `embeddingColumnName`, and `modelName`.
+
 ```csharp
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "spanner_agent",
     Model = "gemini-2.5-flash",
     Instruction = "You are a database admin. Query Spanner to check user counts. Use instance 'prod-instance' and database 'main-db'.",
-    Tools = [new SpannerQueryTool()]
+    Tools = [new SpannerQueryTool(), new SpannerSearchTool()]
 });
 ```
 
@@ -92,6 +96,20 @@ var agent = new LlmAgent(new LlmAgentConfig
     Name = "discovery_agent",
     Model = "gemini-2.5-flash",
     Tools = [new GoogleApiTool(), new ApiHubTool()]
+});
+```
+
+#### Computer Use
+The **`ComputerUseTool`** allows the LLM to perform automated browser or computer interaction tasks. It normalizes virtual coordinates to the actual screen size using a driver instance.
+
+```csharp
+var driver = new PlaywrightDriver();
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "computer_use_agent",
+    Model = "gemini-2.5-flash",
+    Instruction = "You are a web automation bot. Open google.com and search for ADK.",
+    Tools = [new ComputerUseTool(driver)]
 });
 ```
 

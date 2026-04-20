@@ -1,3 +1,12 @@
+<html>
+    <h2 align="center">
+      <img src="assets/agent-development-kit.png" width="256"/>
+    </h2>
+    <h3 align="center">
+      An open-source, code-first .NET framework for building, evaluating, and deploying sophisticated AI agents with flexibility and control.
+    </h3>
+</html>
+
 # ADK for .NET
 
 Welcome to the Agent Development Kit (ADK) for .NET (C#). The ADK is a modern, extensible, and high-performance framework for building agentic applications. 
@@ -58,6 +67,12 @@ await foreach (var evt in runner.RunAsync("user-1", "session-1", content))
     }
 }
 ```
+
+## Web UI
+
+A built-in development UI to help you test, evaluate, debug, and showcase your agent(s).
+
+<img src="assets/adk-web-dev-ui-function-call.png"/>
 
 ## Core Concepts (API Overview)
 
