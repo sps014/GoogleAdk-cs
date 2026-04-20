@@ -149,32 +149,10 @@ public static class AdkApiEndpoints
                     runConfig: runConfig,
                     cancellationToken: http.RequestAborted))
                 {
-                    // ADK Web UI renders artifacts both during part processing
-                    // (storeMessage) and during action processing (processActionArtifact).
-                    // To avoid double-rendering, split events that have both content
-                    // and artifactDelta into two SSE events (matching Python ADK server).
-                    if (evt.Content?.Parts?.Count > 0 && evt.Actions.ArtifactDelta.Count > 0)
-                    {
-                        // 1) Content event with artifactDelta cleared
-                        var savedDelta = evt.Actions.ArtifactDelta;
-                        evt.Actions.ArtifactDelta = new Dictionary<string, int>();
-                        var contentJson = JsonSerializer.Serialize(evt, s_jsonOptions);
-                        await http.Response.WriteAsync($"data: {contentJson}\n\n", http.RequestAborted);
-                        await http.Response.Body.FlushAsync(http.RequestAborted);
-
-                        // 2) Artifact-only event (no content)
-                        evt.Content = null;
-                        evt.Actions.ArtifactDelta = savedDelta;
-                        var artifactJson = JsonSerializer.Serialize(evt, s_jsonOptions);
-                        await http.Response.WriteAsync($"data: {artifactJson}\n\n", http.RequestAborted);
-                        await http.Response.Body.FlushAsync(http.RequestAborted);
-                    }
-                    else
-                    {
-                        var json = JsonSerializer.Serialize(evt, s_jsonOptions);
-                        await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
-                        await http.Response.Body.FlushAsync(http.RequestAborted);
-                    }
+                    // ADK Web UI handles rendering artifacts correctly.
+                    var json = JsonSerializer.Serialize(evt, s_jsonOptions);
+                    await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
+                    await http.Response.Body.FlushAsync(http.RequestAborted);
                 }
             }
             catch (OperationCanceledException) { /* client disconnected */ }
@@ -272,12 +250,36 @@ public static class AdkApiEndpoints
             return Results.Text("", "application/x-yaml");
         });
 
+        // ── Version (stub for Python ADK UI compatibility) ──────────────
+        app.MapGet("/version", () =>
+        {
+            return Results.Json(new
+            {
+                version = "0.1.0",
+                language = "csharp",
+                language_version = Environment.Version.ToString()
+            }, s_jsonOptions);
+        });
+
         // ── Agent Graph ────────────────────────────────────────────────────
         app.MapGet("/apps/{appName}/agent-graph", (string appName, AgentLoader loader) =>
         {
             var agent = loader.GetAgent(appName);
             var graph = AgentGraphBuilder.BuildGraph(agent);
             return Results.Json(graph, s_jsonOptions);
+        });
+
+        app.MapGet("/dev/build_graph/{appName}", (string appName, AgentLoader loader) =>
+        {
+            var agent = loader.GetAgent(appName);
+            var graph = AgentGraphBuilder.BuildGraph(agent);
+            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+        });
+
+        app.MapGet("/dev/build_graph_image/{appName}", (string appName) =>
+        {
+            // Just return a 204 No Content for now to prevent 404s in the UI
+            return Results.NoContent();
         });
 
         // ── Debug Trace (per event) ────────────────────────────────────────
@@ -373,10 +375,16 @@ public static class AdkApiEndpoints
             (string appName) => Results.StatusCode(501));
 
         // ── Artifacts ──────────────────────────────────────────────────────
-        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}",
-            async (string appName, string userId, string sessionId, string artifactName, int versionId, RunnerManager mgr) =>
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionIdStr}",
+            async (string appName, string userId, string sessionId, string artifactName, string versionIdStr, RunnerManager mgr) =>
             {
                 if (mgr.ArtifactService == null) return Results.NotFound();
+
+                int? versionId = null;
+                if (versionIdStr != "latest" && int.TryParse(versionIdStr, out var v))
+                {
+                    versionId = v;
+                }
 
                 var part = await mgr.ArtifactService.LoadArtifactAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
                 {
@@ -407,10 +415,16 @@ public static class AdkApiEndpoints
                 return Results.Json(part, s_jsonOptions);
             });
 
-        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}/metadata",
-            async (string appName, string userId, string sessionId, string artifactName, int versionId, RunnerManager mgr) =>
+        app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionIdStr}/metadata",
+            async (string appName, string userId, string sessionId, string artifactName, string versionIdStr, RunnerManager mgr) =>
             {
                 if (mgr.ArtifactService == null) return Results.NotFound();
+
+                int? versionId = null;
+                if (versionIdStr != "latest" && int.TryParse(versionIdStr, out var v))
+                {
+                    versionId = v;
+                }
 
                 var metadata = await mgr.ArtifactService.GetArtifactVersionAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
                 {
@@ -472,6 +486,33 @@ public static class AdkApiEndpoints
                 });
 
                 return Results.Json(filenames, s_jsonOptions);
+            });
+
+        app.MapPost("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts",
+            async (string appName, string userId, string sessionId, [FromBody] SaveArtifactBody req, RunnerManager mgr) =>
+            {
+                if (mgr.ArtifactService == null) return Results.StatusCode(501);
+
+                var version = await mgr.ArtifactService.SaveArtifactAsync(new GoogleAdk.Core.Abstractions.Artifacts.SaveArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = req.Filename,
+                    Artifact = req.Artifact,
+                    CustomMetadata = req.CustomMetadata
+                });
+
+                var metadata = await mgr.ArtifactService.GetArtifactVersionAsync(new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+                {
+                    AppName = appName,
+                    UserId = userId,
+                    SessionId = sessionId,
+                    Filename = req.Filename,
+                    Version = version
+                });
+
+                return Results.Json(metadata, s_jsonOptions);
             });
 
         app.MapDelete("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}",

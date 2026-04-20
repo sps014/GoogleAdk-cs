@@ -94,3 +94,18 @@ public class LiveRequestMessage
     [JsonPropertyName("close")]
     public bool Close { get; set; }
 }
+
+/// <summary>
+/// Request body for saving an artifact.
+/// </summary>
+public class SaveArtifactBody
+{
+    [JsonPropertyName("filename")]
+    public string Filename { get; set; } = string.Empty;
+
+    [JsonPropertyName("artifact")]
+    public Part Artifact { get; set; } = null!;
+
+    [JsonPropertyName("customMetadata")]
+    public Dictionary<string, object?>? CustomMetadata { get; set; }
+}

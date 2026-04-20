@@ -26,4 +26,9 @@ public class ArtifactVersion
     /// Gets or sets the MIME type of the artifact content.
     /// </summary>
     public string? MimeType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the creation time.
+    /// </summary>
+    public double CreateTime { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 }
