@@ -44,6 +44,7 @@
     <Project Path="samples/GoogleAdk.Samples.Ollama/GoogleAdk.Samples.Ollama.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Planning/GoogleAdk.Samples.Planning.csproj" />
     <Project Path="samples/GoogleAdk.Samples.LiveBidi/GoogleAdk.Samples.LiveBidi.csproj" />
+    <Project Path="samples/GoogleAdk.Samples.ComputerUse/GoogleAdk.Samples.ComputerUse.csproj" />
     <Project Path="samples/GoogleAdk.Samples.OutputSchema/GoogleAdk.Samples.OutputSchema.csproj" />
     <Project Path="samples/GoogleAdk.Samples.FeatureFlags/GoogleAdk.Samples.FeatureFlags.csproj" />
     <Project Path="samples/GoogleAdk.Samples.EvalOptimize/GoogleAdk.Samples.EvalOptimize.csproj" />
