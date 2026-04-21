@@ -85,6 +85,9 @@ using System;
 var remoteAgentUrl = "http://localhost:5000/a2a/support_agent/rest";
 var preferredTransport = "HTTP+JSON";
 
+// Define the AgentCard. 
+// In a real-world scenario, you might fetch this dynamically from an Agent Registry or directory service.
+// For static setups, you manually define the AgentCard with the known remote URL.
 var agentCard = new AgentCard 
 { 
     Name = "support_agent", 

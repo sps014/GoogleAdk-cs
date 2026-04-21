@@ -82,6 +82,57 @@ public class StorageUserState
 }
 
 /// <summary>
+/// EF Core entity for storing an artifact's identity.
+/// </summary>
+public class StorageArtifact
+{
+    public string AppName { get; set; } = null!;
+    public string UserId { get; set; } = null!;
+    
+    /// <summary>Session ID, or null if it's a global user artifact.</summary>
+    public string? SessionId { get; set; }
+    
+    /// <summary>The original filename of the artifact.</summary>
+    public string Filename { get; set; } = null!;
+
+    public DateTime CreateTime { get; set; } = DateTime.UtcNow;
+    
+    public ICollection<StorageArtifactVersion> Versions { get; set; } = new List<StorageArtifactVersion>();
+}
+
+/// <summary>
+/// EF Core entity for storing a specific version of an artifact, including its content payload.
+/// </summary>
+public class StorageArtifactVersion
+{
+    public long RowId { get; set; }
+    
+    public string AppName { get; set; } = null!;
+    public string UserId { get; set; } = null!;
+    public string? SessionId { get; set; }
+    public string Filename { get; set; } = null!;
+
+    public int Version { get; set; }
+    
+    public string? MimeType { get; set; }
+    
+    /// <summary>JSON serialized custom metadata.</summary>
+    public string? CustomMetadataJson { get; set; }
+    
+    public string? CanonicalUri { get; set; }
+    
+    /// <summary>The binary payload for streaming/inline data.</summary>
+    public byte[]? Data { get; set; }
+    
+    /// <summary>The text payload for text data.</summary>
+    public string? Text { get; set; }
+    
+    public DateTime CreateTime { get; set; } = DateTime.UtcNow;
+
+    public StorageArtifact? Artifact { get; set; }
+}
+
+/// <summary>
 /// The DbContext for session persistence.
 /// Supports any EF Core provider (SQLite, SQL Server, PostgreSQL, MySQL).
 /// </summary>
@@ -91,6 +142,8 @@ public class AdkSessionDbContext : DbContext
     public DbSet<StorageEvent> Events => Set<StorageEvent>();
     public DbSet<StorageAppState> AppStates => Set<StorageAppState>();
     public DbSet<StorageUserState> UserStates => Set<StorageUserState>();
+    public DbSet<StorageArtifact> Artifacts => Set<StorageArtifact>();
+    public DbSet<StorageArtifactVersion> ArtifactVersions => Set<StorageArtifactVersion>();
 
     public AdkSessionDbContext(DbContextOptions<AdkSessionDbContext> options) : base(options) { }
 
@@ -124,6 +177,27 @@ public class AdkSessionDbContext : DbContext
         {
             entity.HasKey(e => new { e.AppName, e.UserId });
             entity.Property(e => e.StateJson).HasColumnType("text");
+        });
+
+        modelBuilder.Entity<StorageArtifact>(entity =>
+        {
+            entity.HasKey(e => new { e.AppName, e.UserId, e.SessionId, e.Filename });
+        });
+
+        modelBuilder.Entity<StorageArtifactVersion>(entity =>
+        {
+            entity.HasKey(e => e.RowId);
+            entity.Property(e => e.RowId).ValueGeneratedOnAdd();
+            
+            entity.HasIndex(e => new { e.AppName, e.UserId, e.SessionId, e.Filename, e.Version }).IsUnique();
+
+            entity.HasOne(e => e.Artifact)
+                .WithMany(s => s.Versions)
+                .HasForeignKey(e => new { e.AppName, e.UserId, e.SessionId, e.Filename })
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.Property(e => e.Text).HasColumnType("text");
+            // EF Core natively maps byte[] to varbinary/blob types for streaming
         });
     }
 }

@@ -43,3 +43,11 @@ When streaming via SSE using `POST /run_sse`, the server returns a stream of eve
 `RunConfig.SaveInputBlobsAsArtifacts` defaults to `true` in the API server. This means that inline file uploads passed in the HTTP request payload are automatically saved to the configured `ArtifactService` and surfaced as artifacts when running via `/run` or `/run_sse`.
 
 You can manage these artifacts using the standard artifact endpoints (e.g., `GET /artifacts/{id}`).
+
+## Agent Card Endpoint
+
+When A2A is enabled, the server automatically generates and serves an Agent Card for each registered agent. The Agent Card provides a machine-readable description of the agent, including its capabilities, tools, and endpoints, allowing other agents to dynamically discover and interact with it.
+
+You can fetch the Agent Card using a `GET` request to the following relative URL:
+
+- `GET /a2a/{agentName}/.well-known/agent-card.json`
