@@ -62,6 +62,7 @@
   <ItemGroup>
     <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Core.Abstractions\GoogleAdk.Core.Abstractions.csproj" />
     <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Models.Meai\GoogleAdk.Models.Meai.csproj" />
+    <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Models.Ollama\GoogleAdk.Models.Ollama.csproj" />
     <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Models.Gemini\GoogleAdk.Models.Gemini.csproj" />
     <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Core\GoogleAdk.Core.csproj" />
     <_GoogleAdkBundledLibProject Include="$(MSBuildThisFileDirectory)..\GoogleAdk.Evaluation\GoogleAdk.Evaluation.csproj" />

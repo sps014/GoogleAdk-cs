@@ -210,20 +210,34 @@ public static class ConsoleRunner
                     if (config.DebugMode && evt.Partial != true)
                     {
                         var calls = evt.GetFunctionCalls();
-                        if (calls.Count > 0 && currentlyStreamingAuthor != null)
+                        if (calls.Count > 0)
                         {
-                            // Clear the "streaming..." line
-                            AnsiConsole.Write(new string(' ', Console.WindowWidth));
-                            AnsiConsole.Markup("\r");
-                            
-                            var panel = new Panel(textBuffer.ToString().TrimEnd())
-                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                .BorderColor(Color.Blue)
-                                .Expand();
-                            AnsiConsole.Write(panel);
-                            
-                            currentlyStreamingAuthor = null;
-                            textBuffer.Clear();
+                            // Flush thinking panel first so it appears BEFORE the tool call
+                            if (currentlyStreamingThinkingAuthor != null)
+                            {
+                                AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                AnsiConsole.Markup("\r");
+                                var thinkFlushPanel = new Panel(Markup.Escape(thinkingBuffer.ToString().TrimEnd()))
+                                    .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                                    .BorderColor(Color.Grey)
+                                    .Expand();
+                                AnsiConsole.Write(thinkFlushPanel);
+                                currentlyStreamingThinkingAuthor = null;
+                                thinkingBuffer.Clear();
+                            }
+
+                            if (currentlyStreamingAuthor != null)
+                            {
+                                AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                AnsiConsole.Markup("\r");
+                                var panel = new Panel(textBuffer.ToString().TrimEnd())
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
+                                AnsiConsole.Write(panel);
+                                currentlyStreamingAuthor = null;
+                                textBuffer.Clear();
+                            }
                         }
 
                         foreach (var call in calls)
@@ -237,20 +251,33 @@ public static class ConsoleRunner
                         }
 
                         var responses = evt.GetFunctionResponses();
-                        if (responses.Count > 0 && currentlyStreamingAuthor != null)
+                        if (responses.Count > 0)
                         {
-                            // Clear the "streaming..." line
-                            AnsiConsole.Write(new string(' ', Console.WindowWidth));
-                            AnsiConsole.Markup("\r");
-                            
-                            var panel = new Panel(textBuffer.ToString().TrimEnd())
-                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                .BorderColor(Color.Blue)
-                                .Expand();
-                            AnsiConsole.Write(panel);
-                            
-                            currentlyStreamingAuthor = null;
-                            textBuffer.Clear();
+                            if (currentlyStreamingThinkingAuthor != null)
+                            {
+                                AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                AnsiConsole.Markup("\r");
+                                var thinkFlushPanel = new Panel(Markup.Escape(thinkingBuffer.ToString().TrimEnd()))
+                                    .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                                    .BorderColor(Color.Grey)
+                                    .Expand();
+                                AnsiConsole.Write(thinkFlushPanel);
+                                currentlyStreamingThinkingAuthor = null;
+                                thinkingBuffer.Clear();
+                            }
+
+                            if (currentlyStreamingAuthor != null)
+                            {
+                                AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                AnsiConsole.Markup("\r");
+                                var panel = new Panel(textBuffer.ToString().TrimEnd())
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
+                                AnsiConsole.Write(panel);
+                                currentlyStreamingAuthor = null;
+                                textBuffer.Clear();
+                            }
                         }
 
                         foreach (var resp in responses)
@@ -285,23 +312,27 @@ public static class ConsoleRunner
                                     thinkingBuffer.Clear();
                                 }
                                 currentlyStreamingThinkingAuthor = evt.Author;
+                                // Print indicator once when thinking starts, not for every token
+                                AnsiConsole.Markup($"\r[grey]{Markup.Escape(evt.Author!)}[/] thinking... ");
                             }
                             thinkingBuffer.Append(thoughtText);
-                            AnsiConsole.Markup($"\r[grey]{Markup.Escape(evt.Author!)}[/] thinking... ");
                         }
                         else
                         {
-                            // Flush any in-progress thinking stream.
+                            // Non-partial: thinking arrived without streaming (non-stream mode).
+                            // If we were already streaming thoughts, the buffer is complete — don't append again.
                             if (currentlyStreamingThinkingAuthor == evt.Author)
                             {
                                 AnsiConsole.Write(new string(' ', Console.WindowWidth));
                                 AnsiConsole.Markup("\r");
+                                // Buffer already contains all streamed tokens; do NOT re-append thoughtText
+                            }
+                            else
+                            {
+                                // Fresh non-streamed thought — put it directly in the buffer
                                 thinkingBuffer.Append(thoughtText);
                             }
-                            var fullThought = currentlyStreamingThinkingAuthor == evt.Author
-                                ? thinkingBuffer.ToString().TrimEnd()
-                                : thoughtText.TrimEnd();
-                            var thinkPanel = new Panel(Markup.Escape(fullThought))
+                            var thinkPanel = new Panel(Markup.Escape(thinkingBuffer.ToString().TrimEnd()))
                                 .Header($"[grey]Thinking ({Markup.Escape(evt.Author!)})[/]")
                                 .BorderColor(Color.Grey)
                                 .Expand();
@@ -343,13 +374,10 @@ public static class ConsoleRunner
                                     textBuffer.Clear();
                                 }
                                 currentlyStreamingAuthor = evt.Author;
+                                // Print indicator once when streaming starts, not for every token
+                                AnsiConsole.Markup($"\r[blue]{Markup.Escape(currentlyStreamingAuthor)}[/] streaming... ");
                             }
                             textBuffer.Append(textContent);
-                            
-                            // Re-render the panel dynamically to show streaming progress
-                            // AnsiConsole doesn't have an easy "append" for Panels, so we clear the current line
-                            // and redraw. This is a bit hacky but works for basic streaming.
-                            AnsiConsole.Markup($"\r[blue]{Markup.Escape(currentlyStreamingAuthor)}[/] streaming... ");
                         }
                         else
                         {

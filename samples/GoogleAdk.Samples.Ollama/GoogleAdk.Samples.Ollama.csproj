@@ -2,7 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\GoogleAdk.Core\GoogleAdk.Core.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.Core.Abstractions\GoogleAdk.Core.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.Models.Meai\GoogleAdk.Models.Meai.csproj" />
+    <ProjectReference Include="..\..\src\GoogleAdk.Models.Ollama\GoogleAdk.Models.Ollama.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.ApiServer\GoogleAdk.ApiServer.csproj" />
     <ProjectReference Include="..\..\src\GoogleAdk.SourceGenerators\GoogleAdk.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
@@ -10,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.AI.Ollama" Version="9.7.0-preview.1.25356.2" />
   </ItemGroup>
 
   <PropertyGroup>

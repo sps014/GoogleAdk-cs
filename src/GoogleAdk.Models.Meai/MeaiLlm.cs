@@ -137,11 +137,11 @@ public class MeaiLlm : BaseLlm
                 }
             }
 
-            // Build the final aggregated response with all accumulated parts.
-            // Thought parts come first, then regular text, then FC/data parts.
+            // Build the final aggregated response.
+            // Thought parts are intentionally excluded — they were already emitted
+            // as partial events and are accumulated in ADK Web / ConsoleRunner from
+            // those partials. Including them here would cause a duplicate Thinking panel.
             var finalParts = new List<Part>();
-            if (thinkingBuffer.Length > 0)
-                finalParts.Add(new Part { Text = thinkingBuffer, Thought = true });
             if (textBuffer.Length > 0)
                 finalParts.Add(new Part { Text = textBuffer });
             finalParts.AddRange(fcParts);
@@ -220,6 +220,12 @@ public class MeaiLlm : BaseLlm
             {
                 foreach (var part in content.Parts)
                 {
+                    // Never send thought/reasoning parts back in history.
+                    // Gemma4, deepseek-r1, and other thinking models require
+                    // that previous-turn thoughts are excluded from the conversation.
+                    if (part.Thought == true)
+                        continue;
+
                     if (part.Text != null)
                     {
                         aiContents.Add(new TextContent(part.Text));
@@ -306,10 +312,15 @@ public class MeaiLlm : BaseLlm
                 additionalProperties["speechConfig"] = jsonNode;
             }
         }
-        // Pass ThinkingConfig so providers that understand it (e.g. Ollama deepseek-r1,
-        // OpenAI o-series via AdditionalProperties) can enable reasoning.
+        // Pass ThinkingConfig to providers that support reasoning.
         if (config.ThinkingConfig != null)
         {
+            // Ollama: uses a top-level "think" boolean (maps to Ollama API's think param).
+            // Gemma4, deepseek-r1, qwq, and other thinking-capable models read this.
+            if (config.ThinkingConfig.IncludeThoughts == true)
+                additionalProperties["think"] = true;
+
+            // Generic JSON fallback for other providers (e.g. OpenAI o-series).
             var jsonNode = JsonSerializer.SerializeToNode(config.ThinkingConfig,
                 new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
             if (jsonNode != null)
