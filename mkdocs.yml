@@ -63,6 +63,19 @@ nav:
     - Streaming: streaming.md
   - Tools & Integrations:
     - Tools Overview: tools.md
+    - Google Search Tool: google-search-tool.md
+    - Vertex AI Search Tool: vertex-ai-search-tool.md
+    - Computer Use Tool: computer-use-tool.md
+    - BigQuery Tools: bigquery-tools.md
+    - Cloud Spanner Tools: spanner-tools.md
+    - Agent Tool: agent-tool.md
+    - Auth Tool: auth-tool.md
+    - Bigtable Query Tool: bigtable-query-tool.md
+    - Pub/Sub Message Tool: pubsub-message-tool.md
+    - Google API Tool: google-api-tool.md
+    - API Hub Tool: api-hub-tool.md
+    - Discovery Engine Search Tool: discovery-engine-search-tool.md
+    - Vertex AI RAG Retrieval Tool: vertex-ai-rag-retrieval-tool.md
     - Human in the Loop: human-in-the-loop.md
     - Code Execution: code-execution.md
     - Model Context Protocol (MCP): mcp.md
@@ -73,6 +86,9 @@ nav:
     - Output Schema: output-schema.md
   - Advanced Topics:
     - Evaluation & Optimization: evaluation-optimization.md
+    - Rubric-Based Evaluator: rubric-based-evaluator.md
+    - Hallucination Evaluator: hallucination-evaluator.md
+    - LLM-as-a-Judge Evaluator: llm-as-judge-evaluator.md
     - Plugins: plugins.md
     - Testing: testing.md
     - Feature Flags: feature-flags.md
