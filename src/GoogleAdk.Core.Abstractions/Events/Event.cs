@@ -131,14 +131,16 @@ public class Event : LlmResponse
     }
 
     /// <summary>
-    /// Extracts and concatenates all text from the parts of this event.
+    /// Extracts and concatenates all non-thought text from the parts of this event.
+    /// Thought parts (where <see cref="Part.Thought"/> is <c>true</c>) are excluded
+    /// so they do not bleed into tool results, output keys, or regular text output.
     /// </summary>
     public string StringifyContent()
     {
         if (Content?.Parts == null)
             return string.Empty;
 
-        return string.Join("", Content.Parts.Select(p => p.Text ?? ""));
+        return string.Join("", Content.Parts.Where(p => p.Thought != true).Select(p => p.Text ?? ""));
     }
 
     /// <summary>

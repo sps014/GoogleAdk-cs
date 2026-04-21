@@ -5,7 +5,10 @@ using GenerativeAI.Types.RagEngine;
 using GoogleAdk.Core.Abstractions.Events;
 using GoogleAdk.Core.Abstractions.Models;
 using GoogleAdk.Models.Meai;
+using Microsoft.Extensions.AI;
 using System.Runtime.CompilerServices;
+using AdkContent = GoogleAdk.Core.Abstractions.Models.Content;
+using AdkPart = GoogleAdk.Core.Abstractions.Models.Part;
 
 namespace GoogleAdk.Models.Gemini;
 
@@ -17,6 +20,10 @@ namespace GoogleAdk.Models.Gemini;
 public class GeminiLlm : MeaiLlm
 {
     private readonly GenerativeAIChatClient _client;
+
+    // Per-streaming-turn buffer for accumulating thought text across chunks.
+    // Reset after each final aggregated response.
+    private readonly System.Text.StringBuilder _thinkingBuffer = new();
 
     public GeminiLlm(string model, GenerativeAIChatClient client) : base(model, client)
     {
@@ -48,6 +55,16 @@ public class GeminiLlm : MeaiLlm
 
             options.AdditionalProperties?.Remove("speechConfig");
 
+            // Inject ThinkingConfig via AdditionalProperties (the bridge reads these keys).
+            if (config.ThinkingConfig != null)
+            {
+                options.AdditionalProperties ??= new Microsoft.Extensions.AI.AdditionalPropertiesDictionary();
+                if (config.ThinkingConfig.IncludeThoughts.HasValue)
+                    options.AdditionalProperties["IncludeThoughts"] = config.ThinkingConfig.IncludeThoughts.Value;
+                if (config.ThinkingConfig.ThinkingBudget.HasValue)
+                    options.AdditionalProperties["ThinkingBudget"] = config.ThinkingConfig.ThinkingBudget.Value;
+            }
+
             options.RawRepresentationFactory = _ =>
             {
                 var genConfig = new GenerativeAI.Types.GenerationConfig();
@@ -72,6 +89,17 @@ public class GeminiLlm : MeaiLlm
                     // genConfig.SpeechConfig = genSpeechConfig;
                 }
 
+                // Inject ThinkingConfig so the Gemini API enables model-native thinking.
+                // The GenerativeAI.Microsoft bridge reads these from AdditionalProperties.
+                if (config.ThinkingConfig != null)
+                {
+                    genConfig.ThinkingConfig = new GenerativeAI.Types.ThinkingConfig
+                    {
+                        ThinkingBudget = config.ThinkingConfig.ThinkingBudget,
+                        IncludeThoughts = config.ThinkingConfig.IncludeThoughts ?? false
+                    };
+                }
+
                 return genConfig;
             };
         }
@@ -92,30 +120,24 @@ public class GeminiLlm : MeaiLlm
             var cacheManager = new GeminiContextCacheManager(genModel);
             var cacheMetadata = await cacheManager.HandleContextCachingAsync(llmRequest);
             if (cacheMetadata != null)
-            {
                 llmRequest.CacheMetadata = cacheMetadata;
-            }
         }
 
         if (genModel != null && llmRequest.Config?.Tools != null)
         {
-            // Reset specialized tool state
             genModel.UseGoogleSearch = false;
             SetRetrievalTool(genModel, null);
 
             foreach (var toolDecl in llmRequest.Config.Tools)
             {
                 if (toolDecl.GoogleSearch != null || toolDecl.GoogleSearchRetrieval != null)
-                {
                     genModel.UseGoogleSearch = true;
-                }
 
                 if (toolDecl.Retrieval?.VertexAiSearch != null)
                 {
                     var vs = toolDecl.Retrieval.VertexAiSearch;
                     var specs = vs.DataStoreSpecs?.Select(s => new VertexAISearchDataStoreSpec { DataStore = s.DataStore }).ToList();
-
-                    var toolObj = new GenerativeAI.Types.Tool
+                    SetRetrievalTool(genModel, new GenerativeAI.Types.Tool
                     {
                         Retrieval = new VertexRetrievalTool
                         {
@@ -128,14 +150,12 @@ public class GeminiLlm : MeaiLlm
                                 MaxResults = vs.MaxResults
                             }
                         }
-                    };
-                    SetRetrievalTool(genModel, toolObj);
+                    });
                 }
                 else if (toolDecl.Retrieval?.VertexRagStore != null)
                 {
                     var vrs = toolDecl.Retrieval.VertexRagStore;
-
-                    var toolObj = new GenerativeAI.Types.Tool
+                    SetRetrievalTool(genModel, new GenerativeAI.Types.Tool
                     {
                         Retrieval = new VertexRetrievalTool
                         {
@@ -146,60 +166,253 @@ public class GeminiLlm : MeaiLlm
                                 VectorDistanceThreshold = (float?)vrs.VectorDistanceThreshold
                             }
                         }
-                    };
-                    SetRetrievalTool(genModel, toolObj);
+                    });
                 }
             }
         }
 
-        await foreach (var resp in base.GenerateContentAsync(llmRequest, stream, cancellationToken))
+        if (stream)
         {
-            if (resp.RawRepresentation is GenerateContentResponse raw)
+            // Drive the MEAI streaming loop directly so we can inspect every chunk's
+            // RawRepresentation for Gemini thought flags — the MEAI bridge may not
+            // expose thought text in update.Text at all (it silently drops it).
+            var messages = ConvertToMeaiMessages(llmRequest);
+            var options = ConvertToMeaiOptions(llmRequest);
+
+            var regularTextBuffer = new System.Text.StringBuilder();
+            var fcParts = new List<AdkPart>();
+            object? lastRaw = null;
+
+            await foreach (var update in ((IChatClient)_client).GetStreamingResponseAsync(
+                messages, options, cancellationToken))
             {
-                var gm = raw.Candidates?.FirstOrDefault()?.GroundingMetadata;
-                if (gm != null)
+                lastRaw = update.RawRepresentation ?? lastRaw;
+
+                // --- Detect thought flag from raw Gemini chunk ---
+                bool isThought = false;
+                string? rawThoughtText = null;
+                if (update.RawRepresentation is GenerateContentResponse chunkRaw)
                 {
-                    resp.GroundingMetadata = new GoogleAdk.Core.Abstractions.Models.GroundingMetadata
+                    var chunkParts = chunkRaw.Candidates?.FirstOrDefault()?.Content?.Parts;
+                    if (chunkParts?.Count > 0 && chunkParts[0].Thought == true)
                     {
-                        WebSearchQueries = gm.WebSearchQueries,
-                        SearchEntryPoint = gm.SearchEntryPoint == null ? null : new GoogleAdk.Core.Abstractions.Models.SearchEntryPoint
+                        isThought = true;
+                        rawThoughtText = chunkParts[0].Text;
+                    }
+                }
+
+                // Determine effective text: prefer update.Text; fall back to raw for thoughts
+                // that the MEAI bridge dropped (i.e. didn't put into update.Text).
+                var effectiveText = update.Text;
+                if (isThought && string.IsNullOrEmpty(effectiveText))
+                    effectiveText = rawThoughtText;
+
+                if (!string.IsNullOrEmpty(effectiveText))
+                {
+                    if (isThought)
+                    {
+                        _thinkingBuffer.Append(effectiveText);
+                        yield return new LlmResponse
                         {
-                            RenderedContent = gm.SearchEntryPoint.RenderedContent
-                        },
-                        GroundingChunks = gm.GroundingChunks?.Select(c => new GoogleAdk.Core.Abstractions.Models.GroundingChunk
-                        {
-                            Web = c.Web == null ? null : new GoogleAdk.Core.Abstractions.Models.WebGroundingChunk
+                            Content = new AdkContent
                             {
-                                Uri = c.Web.Uri,
-                                Title = c.Web.Title
+                                Role = "model",
+                                Parts = new List<AdkPart>
+                                    { new AdkPart { Text = effectiveText, Thought = true } }
                             },
-                            RetrievedContext = c.RetrievedContext == null ? null : new GoogleAdk.Core.Abstractions.Models.RetrievedContextGroundingChunk
-                            {
-                                Uri = c.RetrievedContext.Uri,
-                                Title = c.RetrievedContext.Title
-                            }
-                        }).ToList(),
-                        GroundingSupports = gm.GroundingSupports?.Select(s => new GoogleAdk.Core.Abstractions.Models.GroundingSupport
+                            Partial = true,
+                            RawRepresentation = update.RawRepresentation,
+                        };
+                    }
+                    else
+                    {
+                        regularTextBuffer.Append(effectiveText);
+                        yield return new LlmResponse
                         {
-                            Segment = s.Segment == null ? null : new GoogleAdk.Core.Abstractions.Models.Segment
+                            Content = new AdkContent
                             {
-                                StartIndex = s.Segment.StartIndex,
-                                EndIndex = s.Segment.EndIndex,
-                                Text = s.Segment.Text
+                                Role = "model",
+                                Parts = new List<AdkPart>
+                                    { new AdkPart { Text = effectiveText } }
                             },
-                            GroundingChunkIndices = s.GroundingChunkIndices?.ToList()
-                        }).ToList()
-                    };
+                            Partial = true,
+                            RawRepresentation = update.RawRepresentation,
+                        };
+                    }
+                }
+
+                // Handle function calls, reasoning content (Ollama/OpenAI), and data content
+                if (update.Contents != null)
+                {
+                    foreach (var content in update.Contents)
+                    {
+                        if (content is TextReasoningContent reasoningContent && reasoningContent.Text is { Length: > 0 })
+                        {
+                            // Non-Gemini provider reasoning (e.g. Ollama deepseek-r1)
+                            _thinkingBuffer.Append(reasoningContent.Text);
+                            yield return new LlmResponse
+                            {
+                                Content = new AdkContent
+                                {
+                                    Role = "model",
+                                    Parts = new List<AdkPart>
+                                        { new AdkPart { Text = reasoningContent.Text, Thought = true } }
+                                },
+                                Partial = true,
+                                RawRepresentation = update.RawRepresentation,
+                            };
+                        }
+                        else if (content is FunctionCallContent functionCall)
+                        {
+                            var fcPart = new AdkPart
+                            {
+                                FunctionCall = new GoogleAdk.Core.Abstractions.Models.FunctionCall
+                                {
+                                    Name = functionCall.Name,
+                                    Args = ConvertArgsToDictionary(functionCall.Arguments),
+                                    Id = functionCall.CallId,
+                                }
+                            };
+                            fcParts.Add(fcPart);
+                            yield return new LlmResponse
+                            {
+                                Content = new AdkContent { Role = "model", Parts = new List<AdkPart> { fcPart } },
+                                Partial = true,
+                                RawRepresentation = update.RawRepresentation,
+                            };
+                        }
+                        else if (content is DataContent dataContent)
+                        {
+                            var dataPart = new AdkPart
+                            {
+                                InlineData = new InlineData
+                                {
+                                    MimeType = dataContent.MediaType,
+                                    Data = Convert.ToBase64String(dataContent.Data.ToArray())
+                                }
+                            };
+                            fcParts.Add(dataPart);
+                            yield return new LlmResponse
+                            {
+                                Content = new AdkContent { Role = "model", Parts = new List<AdkPart> { dataPart } },
+                                Partial = true,
+                                RawRepresentation = update.RawRepresentation,
+                            };
+                        }
+                    }
                 }
             }
 
-            if (llmRequest.CacheMetadata != null)
-            {
-                resp.CacheMetadata = llmRequest.CacheMetadata.Clone();
-            }
+            // Build the final aggregated response.
+            // Thought parts are intentionally excluded: they were already emitted as
+            // partial streaming events and including them again here would cause the
+            // web UI (and ConsoleRunner) to render the thinking content twice.
+            var finalParts = new List<AdkPart>();
+            if (regularTextBuffer.Length > 0)
+                finalParts.Add(new AdkPart { Text = regularTextBuffer.ToString() });
+            finalParts.AddRange(fcParts);
 
-            yield return resp;
+            _thinkingBuffer.Clear();
+
+            if (finalParts.Count > 0 || lastRaw != null)
+            {
+                var finalResp = new LlmResponse
+                {
+                    Content = new AdkContent
+                    {
+                        Role = "model",
+                        Parts = finalParts.Count > 0 ? finalParts : new List<AdkPart>()
+                    },
+                    Partial = false,
+                    TurnComplete = true,
+                    RawRepresentation = lastRaw,
+                };
+
+                if (lastRaw is GenerateContentResponse finalRaw)
+                    ApplyGroundingMetadata(finalResp, finalRaw);
+
+                if (llmRequest.CacheMetadata != null)
+                    finalResp.CacheMetadata = llmRequest.CacheMetadata.Clone();
+
+                yield return finalResp;
+            }
         }
+        else
+        {
+            // Non-streaming: use base class, then inject thought parts from raw response.
+            // The MEAI bridge may not include thought content in TextContent items, so we
+            // read them directly from resp.RawRepresentation (which is always a
+            // GenerateContentResponse for non-streaming Gemini calls).
+            await foreach (var resp in base.GenerateContentAsync(llmRequest, false, cancellationToken))
+            {
+                if (resp.RawRepresentation is GenerateContentResponse raw)
+                {
+                    ApplyGroundingMetadata(resp, raw);
+                    InjectThoughtParts(resp, raw);
+                }
+
+                if (llmRequest.CacheMetadata != null)
+                    resp.CacheMetadata = llmRequest.CacheMetadata.Clone();
+
+                yield return resp;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Copies grounding metadata from a raw Gemini response onto an LlmResponse.
+    /// </summary>
+    private static void ApplyGroundingMetadata(LlmResponse resp, GenerateContentResponse raw)
+    {
+        var gm = raw.Candidates?.FirstOrDefault()?.GroundingMetadata;
+        if (gm == null) return;
+
+        resp.GroundingMetadata = new GoogleAdk.Core.Abstractions.Models.GroundingMetadata
+        {
+            WebSearchQueries = gm.WebSearchQueries,
+            SearchEntryPoint = gm.SearchEntryPoint == null ? null : new GoogleAdk.Core.Abstractions.Models.SearchEntryPoint
+            {
+                RenderedContent = gm.SearchEntryPoint.RenderedContent
+            },
+            GroundingChunks = gm.GroundingChunks?.Select(c => new GoogleAdk.Core.Abstractions.Models.GroundingChunk
+            {
+                Web = c.Web == null ? null : new GoogleAdk.Core.Abstractions.Models.WebGroundingChunk { Uri = c.Web.Uri, Title = c.Web.Title },
+                RetrievedContext = c.RetrievedContext == null ? null : new GoogleAdk.Core.Abstractions.Models.RetrievedContextGroundingChunk { Uri = c.RetrievedContext.Uri, Title = c.RetrievedContext.Title }
+            }).ToList(),
+            GroundingSupports = gm.GroundingSupports?.Select(s => new GoogleAdk.Core.Abstractions.Models.GroundingSupport
+            {
+                Segment = s.Segment == null ? null : new GoogleAdk.Core.Abstractions.Models.Segment
+                {
+                    StartIndex = s.Segment.StartIndex,
+                    EndIndex = s.Segment.EndIndex,
+                    Text = s.Segment.Text
+                },
+                GroundingChunkIndices = s.GroundingChunkIndices?.ToList()
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Prepends thought parts from the raw Gemini response onto an LlmResponse.
+    /// The MEAI bridge may drop thought-flagged parts from its TextContent mapping,
+    /// so we read them directly from the raw candidate parts.
+    /// </summary>
+    private static void InjectThoughtParts(LlmResponse resp, GenerateContentResponse raw)
+    {
+        var rawParts = raw.Candidates?.FirstOrDefault()?.Content?.Parts;
+        if (rawParts == null || resp.Content == null) return;
+
+        var thoughtParts = rawParts
+            .Where(p => p.Thought == true && !string.IsNullOrEmpty(p.Text))
+            .Select(p => new AdkPart { Text = p.Text, Thought = true })
+            .ToList();
+
+        if (thoughtParts.Count == 0) return;
+
+        // Prepend thought parts before existing non-thought parts.
+        var existing = resp.Content.Parts ?? new List<AdkPart>();
+        var nonThought = existing.Where(p => p.Thought != true).ToList();
+        resp.Content.Parts = [.. thoughtParts, .. nonThought];
     }
 
     public override Task<BaseLlmConnection> ConnectAsync(LlmRequest llmRequest)

@@ -43,6 +43,7 @@
     <Project Path="samples/GoogleAdk.Samples.RagEngineSearch/GoogleAdk.Samples.RagEngineSearch.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Ollama/GoogleAdk.Samples.Ollama.csproj" />
     <Project Path="samples/GoogleAdk.Samples.Planning/GoogleAdk.Samples.Planning.csproj" />
+    <Project Path="samples/GoogleAdk.Samples.Thinking/GoogleAdk.Samples.Thinking.csproj" />
     <Project Path="samples/GoogleAdk.Samples.LiveBidi/GoogleAdk.Samples.LiveBidi.csproj" />
     <Project Path="samples/GoogleAdk.Samples.ComputerUse/GoogleAdk.Samples.ComputerUse.csproj" />
     <Project Path="samples/GoogleAdk.Samples.OutputSchema/GoogleAdk.Samples.OutputSchema.csproj" />

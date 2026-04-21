@@ -39,18 +39,3 @@ await AdkServer.RunAsync(myComplexAgent, options =>
 });
 ```
 
-## Running with Console Fallback
-
-A common pattern for samples is to allow the application to run via the console, but switch to the visual dashboard if the `--web` flag is passed.
-
-```csharp
-if (args.Contains("--web"))
-{
-    Console.WriteLine("Starting ADK Web Dashboard...");
-    await AdkServer.RunAsync(agent);
-    return;
-}
-
-// Fallback to standard Console execution
-await ConsoleRunner.RunAsync(agent);
-```

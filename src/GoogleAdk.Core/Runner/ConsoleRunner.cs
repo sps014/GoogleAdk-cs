@@ -161,6 +161,8 @@ public static class ConsoleRunner
 
                 string? currentlyStreamingAuthor = null;
                 var textBuffer = new System.Text.StringBuilder();
+                string? currentlyStreamingThinkingAuthor = null;
+                var thinkingBuffer = new System.Text.StringBuilder();
 
                 await foreach (var evt in runner.RunAsync(userId, sessionId, content, currentStateDelta, runConfig, cts.Token))
                 {
@@ -171,6 +173,19 @@ public static class ConsoleRunner
                     // Process subagent transfers
                     if (config.DebugMode && evt.Author != currentAgent)
                     {
+                        if (currentlyStreamingThinkingAuthor != null)
+                        {
+                            AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                            AnsiConsole.Markup("\r");
+                            var thinkPanel = new Panel(thinkingBuffer.ToString().TrimEnd())
+                                .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                                .BorderColor(Color.Grey)
+                                .Expand();
+                            AnsiConsole.Write(thinkPanel);
+                            currentlyStreamingThinkingAuthor = null;
+                            thinkingBuffer.Clear();
+                        }
+
                         if (currentlyStreamingAuthor != null)
                         {
                             // Clear the "streaming..." line
@@ -249,10 +264,71 @@ public static class ConsoleRunner
                         }
                     }
 
+                    // Process Thought Parts (model-native thinking / reasoning)
+                    var thoughtParts = evt.Content?.Parts?.Where(p => p.Thought == true && !string.IsNullOrEmpty(p.Text)).ToList();
+                    if (thoughtParts?.Count > 0)
+                    {
+                        var thoughtText = string.Join("", thoughtParts.Select(p => p.Text));
+                        if (evt.Partial == true)
+                        {
+                            if (currentlyStreamingThinkingAuthor != evt.Author)
+                            {
+                                if (currentlyStreamingThinkingAuthor != null)
+                                {
+                                    AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                    AnsiConsole.Markup("\r");
+                                    var finishPanel = new Panel(Markup.Escape(thinkingBuffer.ToString().TrimEnd()))
+                                        .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                                        .BorderColor(Color.Grey)
+                                        .Expand();
+                                    AnsiConsole.Write(finishPanel);
+                                    thinkingBuffer.Clear();
+                                }
+                                currentlyStreamingThinkingAuthor = evt.Author;
+                            }
+                            thinkingBuffer.Append(thoughtText);
+                            AnsiConsole.Markup($"\r[grey]{Markup.Escape(evt.Author!)}[/] thinking... ");
+                        }
+                        else
+                        {
+                            // Flush any in-progress thinking stream.
+                            if (currentlyStreamingThinkingAuthor == evt.Author)
+                            {
+                                AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                                AnsiConsole.Markup("\r");
+                                thinkingBuffer.Append(thoughtText);
+                            }
+                            var fullThought = currentlyStreamingThinkingAuthor == evt.Author
+                                ? thinkingBuffer.ToString().TrimEnd()
+                                : thoughtText.TrimEnd();
+                            var thinkPanel = new Panel(Markup.Escape(fullThought))
+                                .Header($"[grey]Thinking ({Markup.Escape(evt.Author!)})[/]")
+                                .BorderColor(Color.Grey)
+                                .Expand();
+                            AnsiConsole.Write(thinkPanel);
+                            currentlyStreamingThinkingAuthor = null;
+                            thinkingBuffer.Clear();
+                        }
+                    }
+
                     // Process AI Text Response
                     var textContent = evt.StringifyContent();
                     if (!string.IsNullOrWhiteSpace(textContent))
                     {
+                        // Flush any pending thinking buffer before rendering response text.
+                        if (currentlyStreamingThinkingAuthor != null)
+                        {
+                            AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                            AnsiConsole.Markup("\r");
+                            var pendingThinkPanel = new Panel(Markup.Escape(thinkingBuffer.ToString().TrimEnd()))
+                                .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                                .BorderColor(Color.Grey)
+                                .Expand();
+                            AnsiConsole.Write(pendingThinkPanel);
+                            currentlyStreamingThinkingAuthor = null;
+                            thinkingBuffer.Clear();
+                        }
+
                         if (evt.Partial == true)
                         {
                             if (currentlyStreamingAuthor != evt.Author)
@@ -356,6 +432,17 @@ public static class ConsoleRunner
                     }
                 }
                 
+                if (currentlyStreamingThinkingAuthor != null)
+                {
+                    AnsiConsole.Write(new string(' ', Console.WindowWidth));
+                    AnsiConsole.Markup("\r");
+                    var thinkPanel = new Panel(thinkingBuffer.ToString().TrimEnd())
+                        .Header($"[grey]Thinking ({Markup.Escape(currentlyStreamingThinkingAuthor)})[/]")
+                        .BorderColor(Color.Grey)
+                        .Expand();
+                    AnsiConsole.Write(thinkPanel);
+                }
+
                 if (currentlyStreamingAuthor != null)
                 {
                     // Clear the "streaming..." line

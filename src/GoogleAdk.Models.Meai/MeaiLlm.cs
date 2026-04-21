@@ -39,6 +39,7 @@ public class MeaiLlm : BaseLlm
         if (stream)
         {
             var textBuffer = string.Empty;
+            var thinkingBuffer = string.Empty;
             var fcParts = new List<Part>();
             object? lastRaw = null;
 
@@ -62,16 +63,32 @@ public class MeaiLlm : BaseLlm
                     };
                 }
 
-                // Check for tool calls in the streaming update.
+                // Check for tool calls and reasoning content in the streaming update.
                 // Streaming FC chunks are marked Partial = true to prevent
                 // premature tool execution. Only the final aggregated response
                 // (yielded after the stream) triggers execution.
                 // This mirrors the Python StreamingResponseAggregator behavior.
-                        if (update.Contents != null)
+                if (update.Contents != null)
                 {
                     foreach (var content in update.Contents)
                     {
-                        if (content is FunctionCallContent functionCall)
+                        if (content is TextReasoningContent reasoningContent && reasoningContent.Text is { Length: > 0 })
+                        {
+                            // Provider returned explicit reasoning/thinking content (e.g. Ollama deepseek-r1,
+                            // OpenAI o-series). Emit as a thought-flagged partial event.
+                            thinkingBuffer += reasoningContent.Text;
+                            yield return new LlmResponse
+                            {
+                                Content = new Content
+                                {
+                                    Role = "model",
+                                    Parts = new List<Part> { new Part { Text = reasoningContent.Text, Thought = true } }
+                                },
+                                Partial = true,
+                                RawRepresentation = update.RawRepresentation,
+                            };
+                        }
+                        else if (content is FunctionCallContent functionCall)
                         {
                             var fcPart = new Part
                             {
@@ -121,8 +138,10 @@ public class MeaiLlm : BaseLlm
             }
 
             // Build the final aggregated response with all accumulated parts.
-            // Text and FC parts are combined so nothing is lost.
+            // Thought parts come first, then regular text, then FC/data parts.
             var finalParts = new List<Part>();
+            if (thinkingBuffer.Length > 0)
+                finalParts.Add(new Part { Text = thinkingBuffer, Thought = true });
             if (textBuffer.Length > 0)
                 finalParts.Add(new Part { Text = textBuffer });
             finalParts.AddRange(fcParts);
@@ -159,7 +178,7 @@ public class MeaiLlm : BaseLlm
     /// <summary>
     /// Converts an ADK LlmRequest to MEAI ChatMessage list.
     /// </summary>
-    private static List<ChatMessage> ConvertToMeaiMessages(LlmRequest llmRequest)
+    protected static List<ChatMessage> ConvertToMeaiMessages(LlmRequest llmRequest)
     {
         var messages = new List<ChatMessage>();
 
@@ -287,6 +306,16 @@ public class MeaiLlm : BaseLlm
                 additionalProperties["speechConfig"] = jsonNode;
             }
         }
+        // Pass ThinkingConfig so providers that understand it (e.g. Ollama deepseek-r1,
+        // OpenAI o-series via AdditionalProperties) can enable reasoning.
+        if (config.ThinkingConfig != null)
+        {
+            var jsonNode = JsonSerializer.SerializeToNode(config.ThinkingConfig,
+                new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+            if (jsonNode != null)
+                additionalProperties["thinkingConfig"] = jsonNode;
+        }
+
         if (additionalProperties.Count > 0)
         {
             options.AdditionalProperties = additionalProperties;
@@ -348,6 +377,11 @@ public class MeaiLlm : BaseLlm
             {
                 switch (content)
                 {
+                    case TextReasoningContent reasoningContent:
+                        // Provider returned explicit reasoning/thinking content (e.g. Ollama deepseek-r1,
+                        // OpenAI o-series). Map to a thought-flagged Part.
+                        parts.Add(new Part { Text = reasoningContent.Text, Thought = true });
+                        break;
                     case TextContent textContent:
                         parts.Add(new Part { Text = textContent.Text });
                         break;
@@ -417,7 +451,7 @@ public class MeaiLlm : BaseLlm
         return llmResponse;
     }
 
-    private static Dictionary<string, object?>? ConvertArgsToDictionary(IDictionary<string, object?>? args)
+    protected static Dictionary<string, object?>? ConvertArgsToDictionary(IDictionary<string, object?>? args)
     {
         if (args == null) return null;
         return new Dictionary<string, object?>(args);
