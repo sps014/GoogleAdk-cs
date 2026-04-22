@@ -20,7 +20,7 @@ public sealed class AgentCard
     public string Description { get; set; } = string.Empty;
 
     [JsonPropertyName("protocolVersion")]
-    public string ProtocolVersion { get; set; } = "0.3.0";
+    public string ProtocolVersion { get; set; } = "v1.0";
 
     [JsonPropertyName("version")]
     public string Version { get; set; } = "1.0.0";
@@ -112,7 +112,7 @@ public static class AgentCardBuilder
         {
             Name = agent.Name,
             Description = string.IsNullOrWhiteSpace(agent.Description) ? agent.Name : agent.Description,
-            ProtocolVersion = "0.3.0",
+            ProtocolVersion = "v1.0",
             Version = "1.0.0",
             Skills = await BuildAgentSkillsAsync(agent),
             Url = preferred?.Url ?? string.Empty,

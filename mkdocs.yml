@@ -14,14 +14,14 @@ theme:
     repo: fontawesome/brands/github
   palette:
     - scheme: default
-      primary: white
-      accent: white
+      primary: indigo
+      accent: light-blue
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: grey
-      accent: grey
+      primary: indigo
+      accent: cyan
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -82,6 +82,7 @@ nav:
     - Streaming: streaming.md
   - Tools & Integrations:
     - Tools Overview: tools.md
+    - Skills Toolset: skills.md
     - Google Search Tool: google-search-tool.md
     - Vertex AI Search Tool: vertex-ai-search-tool.md
     - Computer Use Tool: computer-use-tool.md

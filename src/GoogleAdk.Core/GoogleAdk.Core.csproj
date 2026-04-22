@@ -20,6 +20,8 @@
     <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
     <PackageReference Include="Spectre.Console" Version="0.55.2" />
+    <PackageReference Include="Spectre.Console.Json" Version="0.55.2" />
+    <PackageReference Include="YamlDotNet" Version="17.0.1" />
   </ItemGroup>
 
   <PropertyGroup>
