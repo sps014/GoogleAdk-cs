@@ -83,9 +83,6 @@ public class LlmSummarizer : IBaseSummarizer
 
     private static string StringifyContent(Event evt)
     {
-        if (evt.Content?.Parts == null) return string.Empty;
-        return string.Join("\n", evt.Content.Parts
-            .Where(p => p.Text != null)
-            .Select(p => p.Text));
+        return evt.StringifyContent();
     }
 }

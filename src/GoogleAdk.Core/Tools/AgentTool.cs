@@ -107,7 +107,7 @@ public class AgentTool : BaseTool
 
         var mergedText = string.Join("\n",
             lastEvent.Content.Parts
-                .Where(p => p.Text != null)
+                .Where(p => p.Text != null && p.Thought != true)
                 .Select(p => p.Text));
 
         var hasOutputSchema = _agent is LlmAgent lla && lla.OutputSchema != null;

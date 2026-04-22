@@ -795,7 +795,7 @@ public class LlmAgent : BaseAgent
         if (!evt.IsFinalResponse()) return;
         if (evt.Content?.Parts == null || evt.Content.Parts.Count == 0) return;
 
-        var resultStr = string.Join("", evt.Content.Parts.Select(p => p.Text ?? ""));
+        var resultStr = evt.StringifyContent();
         object result = resultStr;
 
         if (OutputSchema != null)

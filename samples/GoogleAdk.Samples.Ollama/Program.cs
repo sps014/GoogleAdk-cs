@@ -35,7 +35,7 @@ using GoogleAdk.Models.Ollama;
 using Microsoft.Extensions.AI;
 
 Console.WriteLine("=== Ollama Multi-Agent Thinking Sample (gemma4) ===\n");
-Console.WriteLine("Ask: compare London and Tokyo weather and generate a report in table and give the summary of the report.");
+Console.WriteLine("Ask: compare London and Tokyo weather and generate a report.");
 
 AdkEnv.Load();
 
