@@ -61,7 +61,7 @@ var agent = new LlmAgent(new LlmAgentConfig
 await ConsoleRunner.RunAsync(agent); //run in console
 
 //there are other ways to run it, like web UI or you can have a custom runner to have full control.
-//await AdkServer.RunAsync(coordinator); 
+//await AdkServer.RunAsync(agent); 
 
 
 ```
