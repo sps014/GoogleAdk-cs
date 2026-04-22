@@ -10,6 +10,7 @@ using GoogleAdk.Core.Telemetry;
 using OpenTelemetry.Trace;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
+using GoogleAdk.Core.A2a;
 
 namespace GoogleAdk.ApiServer;
 
@@ -139,7 +140,7 @@ public static class AdkServer
         grid.AddRow("[bold magenta]Agent[/]", rootAgent.Name);
 
         if (options.EnableA2a)
-            grid.AddRow("[bold blue]A2A[/]", $"[link={url}/a2a/{rootAgent.Name}/]{url}/a2a/{rootAgent.Name}/[/]");
+            grid.AddRow("[bold blue]A2A[/]", $"[link={url}/a2a/{rootAgent.Name}/{AgentCardConstants.AgentCardPath}]{url}/a2a/{rootAgent.Name}/{AgentCardConstants.AgentCardPath}[/]");
 
         AnsiConsole.WriteLine();
         AnsiConsole.Write(
