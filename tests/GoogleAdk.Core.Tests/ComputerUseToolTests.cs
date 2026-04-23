@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GoogleAdk.Core.Agents;
 using GoogleAdk.Core.Tools;
+using GoogleAdk.Core.Abstractions.Sessions;
 using Xunit;
 
 namespace GoogleAdk.Core.Tests;
@@ -58,7 +59,10 @@ public class ComputerUseToolTests
 
     private static AgentContext CreateToolContext()
     {
-        var invCtx = new InvocationContext();
+        var invCtx = new InvocationContext
+        {
+            Session = Session.Create("s-1", "app", "user")
+        };
         return new AgentContext(invCtx);
     }
 

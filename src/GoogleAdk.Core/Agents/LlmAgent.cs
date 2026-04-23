@@ -101,23 +101,23 @@ public class LlmAgentConfig : BaseAgentConfig
     /// <summary>If true, disables automatic injection of agent identity into the prompt.</summary>
     public bool DisableIdentity { get; set; }
 
-    /// <summary>Before model callbacks.</summary>
-    public List<BeforeModelCallback>? BeforeModelCallbacks { get; set; }
+    /// <summary>Before model callback.</summary>
+    public BeforeModelCallback? BeforeModelCallback { get; set; }
 
-    /// <summary>After model callbacks.</summary>
-    public List<AfterModelCallback>? AfterModelCallbacks { get; set; }
+    /// <summary>After model callback.</summary>
+    public AfterModelCallback? AfterModelCallback { get; set; }
 
-    /// <summary>Model error callbacks.</summary>
-    public List<OnModelErrorCallback>? OnModelErrorCallbacks { get; set; }
+    /// <summary>Model error callback.</summary>
+    public OnModelErrorCallback? OnModelErrorCallback { get; set; }
 
-    /// <summary>Before tool callbacks.</summary>
-    public List<BeforeToolCallback>? BeforeToolCallbacks { get; set; }
+    /// <summary>Before tool callback.</summary>
+    public BeforeToolCallback? BeforeToolCallback { get; set; }
 
-    /// <summary>Tool error callbacks.</summary>
-    public List<OnToolErrorCallback>? OnToolErrorCallbacks { get; set; }
+    /// <summary>Tool error callback.</summary>
+    public OnToolErrorCallback? OnToolErrorCallback { get; set; }
 
-    /// <summary>After tool callbacks.</summary>
-    public List<AfterToolCallback>? AfterToolCallbacks { get; set; }
+    /// <summary>After tool callback.</summary>
+    public AfterToolCallback? AfterToolCallback { get; set; }
 
     /// <summary>Output schema type for structured output. The JSON schema is derived automatically via System.Text.Json.</summary>
     public Type? OutputSchema { get; set; }
@@ -173,12 +173,12 @@ public class LlmAgent : BaseAgent
     public IPlanner? Planner { get; set; }
     public GenerateContentConfig? GenerateContentConfig { get; set; }
     public bool DisableIdentity { get; }
-    public List<BeforeModelCallback> BeforeModelCallbacks { get; }
-    public List<AfterModelCallback> AfterModelCallbacks { get; }
-    public List<OnModelErrorCallback> OnModelErrorCallbacks { get; }
-    public List<BeforeToolCallback> BeforeToolCallbacks { get; }
-    public List<OnToolErrorCallback> OnToolErrorCallbacks { get; }
-    public List<AfterToolCallback> AfterToolCallbacks { get; }
+    public BeforeModelCallback? BeforeModelCallback { get; }
+    public AfterModelCallback? AfterModelCallback { get; }
+    public OnModelErrorCallback? OnModelErrorCallback { get; }
+    public BeforeToolCallback? BeforeToolCallback { get; }
+    public OnToolErrorCallback? OnToolErrorCallback { get; }
+    public AfterToolCallback? AfterToolCallback { get; }
     public Type? OutputSchema { get; set; }
     public Dictionary<string, object?>? InputSchema { get; set; }
     public string? OutputKey { get; set; }
@@ -204,12 +204,12 @@ public class LlmAgent : BaseAgent
         Planner = config.Planner;
         GenerateContentConfig = config.GenerateContentConfig;
         DisableIdentity = config.DisableIdentity;
-        BeforeModelCallbacks = config.BeforeModelCallbacks ?? new();
-        AfterModelCallbacks = config.AfterModelCallbacks ?? new();
-        OnModelErrorCallbacks = config.OnModelErrorCallbacks ?? new();
-        BeforeToolCallbacks = config.BeforeToolCallbacks ?? new();
-        OnToolErrorCallbacks = config.OnToolErrorCallbacks ?? new();
-        AfterToolCallbacks = config.AfterToolCallbacks ?? new();
+        BeforeModelCallback = config.BeforeModelCallback;
+        AfterModelCallback = config.AfterModelCallback;
+        OnModelErrorCallback = config.OnModelErrorCallback;
+        BeforeToolCallback = config.BeforeToolCallback;
+        OnToolErrorCallback = config.OnToolErrorCallback;
+        AfterToolCallback = config.AfterToolCallback;
         OutputSchema = config.OutputSchema;
         InputSchema = config.InputSchema;
         OutputKey = config.OutputKey;
@@ -605,7 +605,7 @@ public class LlmAgent : BaseAgent
 
         var functionResponseEvent = await FunctionCallHandler.HandleFunctionCallsAsync(
             invocationContext, mergedEvent, llmRequest.ToolsDict,
-            BeforeToolCallbacks, OnToolErrorCallbacks, AfterToolCallbacks);
+            BeforeToolCallback, OnToolErrorCallback, AfterToolCallback);
 
         if (functionResponseEvent == null)
             yield break;
@@ -737,10 +737,9 @@ public class LlmAgent : BaseAgent
         }
 
         // Canonical callbacks
-        foreach (var callback in BeforeModelCallbacks)
+        if (BeforeModelCallback != null)
         {
-            var response = await callback(callbackContext, llmRequest);
-            if (response != null) return response;
+            return await BeforeModelCallback(callbackContext, llmRequest);
         }
         return null;
     }
@@ -757,10 +756,9 @@ public class LlmAgent : BaseAgent
         }
 
         // Canonical callbacks
-        foreach (var callback in AfterModelCallbacks)
+        if (AfterModelCallback != null)
         {
-            var response = await callback(callbackContext, llmResponse);
-            if (response != null) return response;
+            return await AfterModelCallback(callbackContext, llmResponse);
         }
         return null;
     }
@@ -779,10 +777,9 @@ public class LlmAgent : BaseAgent
                 return pluginResponse;
         }
 
-        foreach (var callback in OnModelErrorCallbacks)
+        if (OnModelErrorCallback != null)
         {
-            var response = await callback(callbackContext, llmRequest, error);
-            if (response != null) return response;
+            return await OnModelErrorCallback(callbackContext, llmRequest, error);
         }
 
         return null;

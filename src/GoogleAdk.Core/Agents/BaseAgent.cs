@@ -21,8 +21,8 @@ public class BaseAgentConfig
     public string? Description { get; set; }
     public BaseAgent? ParentAgent { get; set; }
     public List<BaseAgent>? SubAgents { get; set; }
-    public List<AgentCallback>? BeforeAgentCallbacks { get; set; }
-    public List<AgentCallback>? AfterAgentCallbacks { get; set; }
+    public AgentCallback? BeforeAgentCallback { get; set; }
+    public AgentCallback? AfterAgentCallback { get; set; }
 }
 
 /// <summary>
@@ -52,14 +52,14 @@ public abstract class BaseAgent
     public IReadOnlyList<BaseAgent> SubAgents { get; }
 
     /// <summary>
-    /// Callbacks invoked before the agent runs.
+    /// Callback invoked before the agent runs.
     /// </summary>
-    public IReadOnlyList<AgentCallback> BeforeAgentCallbacks { get; }
+    public AgentCallback? BeforeAgentCallback { get; }
 
     /// <summary>
-    /// Callbacks invoked after the agent runs.
+    /// Callback invoked after the agent runs.
     /// </summary>
-    public IReadOnlyList<AgentCallback> AfterAgentCallbacks { get; }
+    public AgentCallback? AfterAgentCallback { get; }
 
     /// <summary>
     /// Gets the root agent by traversing up the parent chain.
@@ -81,8 +81,8 @@ public abstract class BaseAgent
         Description = config.Description;
         ParentAgent = config.ParentAgent;
         SubAgents = config.SubAgents ?? new List<BaseAgent>();
-        BeforeAgentCallbacks = config.BeforeAgentCallbacks ?? new List<AgentCallback>();
-        AfterAgentCallbacks = config.AfterAgentCallbacks ?? new List<AgentCallback>();
+        BeforeAgentCallback = config.BeforeAgentCallback;
+        AfterAgentCallback = config.AfterAgentCallback;
         SetParentForSubAgents();
     }
 
@@ -166,24 +166,21 @@ public abstract class BaseAgent
 
     protected async Task<Event?> HandleBeforeAgentCallbackAsync(InvocationContext invocationContext)
     {
-        if (BeforeAgentCallbacks.Count == 0) return null;
+        if (BeforeAgentCallback == null) return null;
 
         var callbackContext = new AgentContext(invocationContext);
-        foreach (var callback in BeforeAgentCallbacks)
+        var content = await BeforeAgentCallback(callbackContext);
+        if (content != null)
         {
-            var content = await callback(callbackContext);
-            if (content != null)
+            invocationContext.EndInvocation = true;
+            return Event.Create(e =>
             {
-                invocationContext.EndInvocation = true;
-                return Event.Create(e =>
-                {
-                    e.InvocationId = invocationContext.InvocationId;
-                    e.Author = Name;
-                    e.Branch = invocationContext.Branch;
-                    e.Content = content;
-                    e.Actions = callbackContext.EventActions;
-                });
-            }
+                e.InvocationId = invocationContext.InvocationId;
+                e.Author = Name;
+                e.Branch = invocationContext.Branch;
+                e.Content = content;
+                e.Actions = callbackContext.EventActions;
+            });
         }
 
         if (callbackContext.State.HasDelta())
@@ -201,23 +198,20 @@ public abstract class BaseAgent
 
     protected async Task<Event?> HandleAfterAgentCallbackAsync(InvocationContext invocationContext)
     {
-        if (AfterAgentCallbacks.Count == 0) return null;
+        if (AfterAgentCallback == null) return null;
 
         var callbackContext = new AgentContext(invocationContext);
-        foreach (var callback in AfterAgentCallbacks)
+        var content = await AfterAgentCallback(callbackContext);
+        if (content != null)
         {
-            var content = await callback(callbackContext);
-            if (content != null)
+            return Event.Create(e =>
             {
-                return Event.Create(e =>
-                {
-                    e.InvocationId = invocationContext.InvocationId;
-                    e.Author = Name;
-                    e.Branch = invocationContext.Branch;
-                    e.Content = content;
-                    e.Actions = callbackContext.EventActions;
-                });
-            }
+                e.InvocationId = invocationContext.InvocationId;
+                e.Author = Name;
+                e.Branch = invocationContext.Branch;
+                e.Content = content;
+                e.Actions = callbackContext.EventActions;
+            });
         }
 
         if (callbackContext.State.HasDelta())

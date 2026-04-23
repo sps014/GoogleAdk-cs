@@ -30,15 +30,12 @@ var agent = new LlmAgent(new LlmAgentConfig
     Model = "gemini-2.5-flash",
     Instruction = "Use weather_lookup for weather and bash for shell tasks.",
     Tools = [weatherTool, bashTool, .. groundingTools],
-    BeforeModelCallbacks =
-    [
-        (_, request) =>
-        {
-            var toolCount = request.Config?.Tools?.Count ?? 0;
-            Console.WriteLine($"Tool declarations added to request: {toolCount}");
-            return Task.FromResult<GoogleAdk.Core.Abstractions.Events.LlmResponse?>(null);
-        }
-    ]
+    BeforeModelCallback = (_, request) =>
+    {
+        var toolCount = request.Config?.Tools?.Count ?? 0;
+        Console.WriteLine($"Tool declarations added to request: {toolCount}");
+        return Task.FromResult<GoogleAdk.Core.Abstractions.Events.LlmResponse?>(null);
+    }
 });
 
 // ── Console mode ───────────────────────────────────────────────────────────

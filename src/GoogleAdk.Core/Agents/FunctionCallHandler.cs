@@ -63,9 +63,9 @@ public static class FunctionCallHandler
         InvocationContext invocationContext,
         Event functionCallEvent,
         Dictionary<string, IBaseTool> toolsDict,
-        IReadOnlyList<BeforeToolCallback> beforeToolCallbacks,
-        IReadOnlyList<OnToolErrorCallback> onToolErrorCallbacks,
-        IReadOnlyList<AfterToolCallback> afterToolCallbacks,
+        BeforeToolCallback? beforeToolCallback,
+        OnToolErrorCallback? onToolErrorCallback,
+        AfterToolCallback? afterToolCallback,
         Dictionary<string, Abstractions.Tools.ToolConfirmation>? toolConfirmations = null,
         HashSet<string>? filterFunctionCallIds = null)
     {
@@ -109,13 +109,9 @@ public static class FunctionCallHandler
             }
 
             // Step 2: Canonical before_tool_callbacks
-            if (functionResponse == null)
+            if (functionResponse == null && beforeToolCallback != null)
             {
-                foreach (var callback in beforeToolCallbacks)
-                {
-                    functionResponse = await callback(tool, args, toolContext);
-                    if (functionResponse != null) break;
-                }
+                functionResponse = await beforeToolCallback(tool, args, toolContext);
             }
 
             // Step 3: Execute the tool
@@ -141,11 +137,9 @@ public static class FunctionCallHandler
                             continue;
                     }
 
-                    foreach (var callback in onToolErrorCallbacks)
+                    if (onToolErrorCallback != null)
                     {
-                        functionResponse = await callback(tool, args, toolContext, ex);
-                        if (functionResponse != null)
-                            break;
+                        functionResponse = await onToolErrorCallback(tool, args, toolContext, ex);
                     }
 
                     if (functionResponse == null)
@@ -162,13 +156,9 @@ public static class FunctionCallHandler
             }
 
             // Step 5: Canonical after_tool_callbacks
-            if (alteredResponse == null && functionResponse != null)
+            if (alteredResponse == null && functionResponse != null && afterToolCallback != null)
             {
-                foreach (var callback in afterToolCallbacks)
-                {
-                    alteredResponse = await callback(tool, args, toolContext, functionResponse);
-                    if (alteredResponse != null) break;
-                }
+                alteredResponse = await afterToolCallback(tool, args, toolContext, functionResponse);
             }
 
             if (alteredResponse != null)

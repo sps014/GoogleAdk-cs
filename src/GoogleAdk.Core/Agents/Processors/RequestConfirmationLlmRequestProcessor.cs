@@ -65,9 +65,9 @@ public class RequestConfirmationLlmRequestProcessor : BaseLlmRequestProcessor
             invocationContext,
             functionCallEvent,
             toolsDict,
-            agent.BeforeToolCallbacks,
-            agent.OnToolErrorCallbacks,
-            agent.AfterToolCallbacks,
+            agent.BeforeToolCallback,
+            agent.OnToolErrorCallback,
+            agent.AfterToolCallback,
             toolConfirmations,
             new HashSet<string>(pending.Keys));
 
