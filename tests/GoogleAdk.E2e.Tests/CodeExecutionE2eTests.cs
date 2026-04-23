@@ -65,6 +65,6 @@ public class CodeExecutionE2eTests
         await foreach (var _ in runner.RunAsync("user-1", session.Id, userMessage)) { }
 
         Assert.NotNull(llm.LastRequest?.Config?.Tools);
-        Assert.Contains(llm.LastRequest!.Config!.Tools!, t => t.GoogleSearch != null);
+        Assert.Contains(llm.LastRequest!.Config!.Tools!, t => t.CodeExecution != null);
     }
 }

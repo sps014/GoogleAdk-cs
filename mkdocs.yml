@@ -105,6 +105,7 @@ nav:
     - Agent-to-Agent (A2A): a2a.md
     - Output Schema: output-schema.md
   - Advanced Topics:
+    - Agent Lifecycle & Callbacks: agent-lifecycle.md
     - Evaluation & Optimization: evaluation-optimization.md
     - Rubric-Based Evaluator: rubric-based-evaluator.md
     - Hallucination Evaluator: hallucination-evaluator.md

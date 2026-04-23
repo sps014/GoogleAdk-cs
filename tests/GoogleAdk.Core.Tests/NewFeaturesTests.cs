@@ -187,10 +187,7 @@ public class NewFeaturesTests
         {
             Name = "tool-agent",
             Tools = [tool],
-            OnToolErrorCallbacks =
-            [
-                (t, args, ctx, ex) => Task.FromResult<Dictionary<string, object?>?>(new Dictionary<string, object?> { ["result"] = "recovered" })
-            ]
+            OnToolErrorCallback = (t, args, ctx, ex) => Task.FromResult<Dictionary<string, object?>?>(new Dictionary<string, object?> { ["result"] = "recovered" })
         });
 
         var context = CreateInvocationContext(agent);
@@ -207,9 +204,9 @@ public class NewFeaturesTests
             context,
             evt,
             new Dictionary<string, IBaseTool> { ["fail"] = tool },
-            agent.BeforeToolCallbacks,
-            agent.OnToolErrorCallbacks,
-            agent.AfterToolCallbacks);
+            agent.BeforeToolCallback,
+            agent.OnToolErrorCallback,
+            agent.AfterToolCallback);
 
         Assert.Contains(response!.Content!.Parts!, p => p.FunctionResponse?.Response?["result"]?.ToString() == "recovered");
     }

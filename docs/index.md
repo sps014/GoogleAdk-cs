@@ -106,6 +106,7 @@ Below is the comprehensive guide to utilizing all features of the ADK:
 - [Agent-to-Agent (A2A)](a2a.md)
 - [Code Execution](code-execution.md)
 - [Planning](planning.md)
+- [Agent Lifecycle & Callbacks](agent-lifecycle.md)
 - [Human-in-the-Loop (Confirmation)](human-in-the-loop.md)
 - [Output Schema (JSON)](output-schema.md)
 - [Prompt Caching](caching.md)
