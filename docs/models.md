@@ -50,13 +50,15 @@ The true power of the ADK's model abstraction is its native support for Microsof
 
 #### Ollama (Local Models)
 
-To run local models like Llama 3 or Gemma using Ollama, use the `Microsoft.Extensions.AI.Ollama` package.
+To run local models like Llama 3 or Gemma using Ollama, use the `GoogleAdk.Models.Ollama` package, which provides a native `OllamaChatClient` that supports advanced features like model-native thinking.
 
 ```csharp
 using GoogleAdk.Models.Meai;
+using GoogleAdk.Models.Ollama;
 using Microsoft.Extensions.AI;
 
 // Connect to your local Ollama instance
+// Pull the model first with: ollama pull gemma4:e4b
 string modelName = "gemma4:e4b";
 IChatClient ollamaClient = new OllamaChatClient(new Uri("http://localhost:11434"), modelName);
 
@@ -78,7 +80,7 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 
 // Initialize the OpenAI client with your API key
-var openAiClient = new OpenAIClient("your-openai-api-key").AsChatClient("gpt-4o");
+var openAiClient = new OpenAIClient("your-openai-api-key").AsIChatClient("gpt-4o");
 
 var agent = new LlmAgent(new LlmAgentConfig
 {
@@ -95,15 +97,17 @@ To use Anthropic models like Claude 3.5 Sonnet, use a compatible MEAI wrapper or
 ```csharp
 using GoogleAdk.Models.Meai;
 using Microsoft.Extensions.AI;
-// Assuming a community or official MEAI wrapper for Anthropic
-using Anthropic.Extensions.AI; 
+// Using the official Anthropic SDK
+using Anthropic;
+using Microsoft.Extensions.AI;
 
-var anthropicClient = new AnthropicChatClient("your-anthropic-api-key", "claude-3-5-sonnet-latest");
+var anthropicClient = new AnthropicClient("your-anthropic-api-key");
+var chatClient = anthropicClient.AsIChatClient("claude-3-5-sonnet-latest");
 
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "claude_agent",
-    Model = new MeaiLlm("claude-3.5-sonnet", anthropicClient),
+    Model = new MeaiLlm("claude-3-5-sonnet-latest", chatClient),
     Instruction = "You are Claude, a helpful assistant."
 });
 ```
