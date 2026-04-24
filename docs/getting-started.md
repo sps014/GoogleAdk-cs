@@ -4,12 +4,25 @@ The Agent Development Kit (ADK) for .NET gives you the foundational components t
 
 ## Prerequisites
 
+> **Important:** Before building agents, ensure you have the required SDK and authentication configured.
+
 - **.NET SDK 10.0+**
 - **An API Key or Google Cloud Project credentials** (e.g., Gemini API Key, Vertex AI configuration)
 
 ### Environment Configuration
 
-The ADK uses `AdkEnv.Load()` to read environment variables from a `.env` file or the system environment. To run the examples, ensure you have the following set:
+The ADK uses `AdkEnv.Load()` to read environment variables. Under the hood, this method attempts to find a `.env` file in your project directory by traversing upwards to locate the `.csproj` file. If found, it loads those variables into the system environment.
+
+You must choose an authentication path depending on your target environment.
+
+#### Authentication Methods
+
+| Provider | Configuration | Best For |
+| :--- | :--- | :--- |
+| **Google AI Studio** | Set `GOOGLE_API_KEY` in your `.env` file. | Local development, prototyping, and hobby projects. |
+| **Google Cloud Vertex AI** | Set `GOOGLE_GENAI_USE_VERTEXAI=True`, `GOOGLE_CLOUD_PROJECT`, and `GOOGLE_CLOUD_LOCATION`. | Enterprise applications, production deployments, and strict data privacy requirements. |
+
+> **Note on Vertex AI:** When using Vertex AI, the ADK relies on **Application Default Credentials (ADC)**. You do not provide an API key. Instead, ensure you have authenticated your local environment by running `gcloud auth application-default login` in your terminal, or that your production environment (like Cloud Run or GKE) has an attached Service Account.
 
 **For Google AI Studio:**
 ```env

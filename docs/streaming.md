@@ -4,6 +4,12 @@ The ADK is built around continuous streaming. Instead of waiting for a complete 
 
 There are two primary modes of streaming within the ADK.
 
+| Feature | `RunAsync` (Standard) | `RunLiveAsync` (Bidirectional) |
+| :--- | :--- | :--- |
+| **Connection Lifecycle** | Opens and closes per request. | Persistent, long-lived connection. |
+| **Input Method** | Single `Content` payload. | Continuous stream via `LiveRequestQueue`. |
+| **Best For** | Chatbots, text generation, standard API endpoints. | Voice assistants, real-time multimodal apps, low-latency loops. |
+
 ## 1. Standard Event Streaming (`RunAsync`)
 
 The most common way to consume ADK outputs is via the standard asynchronous event stream.
@@ -44,7 +50,7 @@ Unlike `RunAsync` which resolves a single user request, `RunLiveAsync` establish
 
 ### The Live Request Queue
 
-To push data into the live connection asynchronously, you utilize a `LiveRequestQueue`.
+> **Note:** To push data into the live connection asynchronously, you utilize a `LiveRequestQueue`. This queue acts as a buffer, allowing you to send multiple user inputs (like audio chunks or text messages) over the same open connection without waiting for the model to finish its previous response.
 
 ```csharp
 using GoogleAdk.Core.Runner;

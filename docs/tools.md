@@ -6,20 +6,23 @@ Tools provide your agents with the ability to interact with the outside world, f
 
 The ADK comes with several built-in tools ready to be used:
 
-- **`GoogleSearchTool`**: Performs live web searches. Returns grounding metadata with search queries.
-- **`VertexAiSearchTool`**: Connects to Google Cloud Vertex AI Search (Discovery Engine) data stores.
-- **`AuthTool`**: Triggers a credential request flow for authenticating users.
-- **`AgentTool`**: Wraps an entire sub-agent as a callable tool, enabling hierarchical agent orchestration.
-- **`ComputerUseTool`**: Wraps computer control functions for use with LLMs, automating tasks like clicking, typing, and scrolling.
-- **`BigQueryQueryTool` & `BigQueryMetadataTool`**: Execute queries and fetch schema metadata from Google Cloud BigQuery.
-- **`SpannerQueryTool`**: Execute SQL queries against Google Cloud Spanner databases.
-- **`SpannerSearchTool`**: Perform vector similarity search in a Cloud Spanner database using a text query.
-- **`BigtableQueryTool`**: Read rows and ranges from Google Cloud Bigtable.
-- **`PubSubMessageTool`**: Publish messages to Google Cloud Pub/Sub topics.
-- **`GoogleApiTool`**: Dynamically call Google Cloud APIs using the Discovery API.
-- **`ApiHubTool`**: Search and discover enterprise APIs in Google Cloud API Hub.
-- **`DiscoveryEngineSearchTool`**: Perform searches against Google Cloud Discovery Engine (Vertex AI Search) datastores.
-- **`VertexAiRagRetrievalTool`**: Execute RAG retrieval queries using Vertex AI Search corpora and data stores.
+| Tool Name | Description | Key Parameters |
+| :--- | :--- | :--- |
+| **`GoogleSearchTool`** | Performs live web searches. Returns grounding metadata with search queries. | - |
+| **`VertexAiSearchTool`** | Connects to Google Cloud Vertex AI Search (Discovery Engine) data stores. | `datastore` / `engine` |
+| **`AuthTool`** | Triggers a credential request flow for authenticating users. | - |
+| **`AgentTool`** | Wraps an entire sub-agent as a callable tool, enabling hierarchical agent orchestration. | `agent` |
+| **`ComputerUseTool`** | Wraps computer control functions for use with LLMs, automating tasks like clicking, typing, and scrolling. | `driver` |
+| **`BigQueryQueryTool`** | Execute SQL queries against Google Cloud BigQuery. | `projectId`, `query` |
+| **`BigQueryMetadataTool`** | Fetch schema metadata from Google Cloud BigQuery. | `projectId`, `datasetId` |
+| **`SpannerQueryTool`** | Execute SQL queries against Google Cloud Spanner databases. | `projectId`, `instanceId`, `databaseId`, `query` |
+| **`SpannerSearchTool`** | Perform vector similarity search in a Cloud Spanner database using a text query. | `projectId`, `instanceId`, `databaseId`, `tableName`, `query` |
+| **`BigtableQueryTool`** | Read rows and ranges from Google Cloud Bigtable. | `projectId`, `instanceId`, `tableId` |
+| **`PubSubMessageTool`** | Publish messages to Google Cloud Pub/Sub topics. | `projectId`, `topicId`, `message` |
+| **`GoogleApiTool`** | Dynamically call Google Cloud APIs using the Discovery API. | `apiName`, `apiVersion` |
+| **`ApiHubTool`** | Search and discover enterprise APIs in Google Cloud API Hub. | `projectId`, `location` |
+| **`DiscoveryEngineSearchTool`** | Perform searches against Google Cloud Discovery Engine (Vertex AI Search) datastores. | `datastore` / `engine` |
+| **`VertexAiRagRetrievalTool`** | Execute RAG retrieval queries using Vertex AI Search corpora and data stores. | `ragResources`, `ragCorpora` |
 
 ### Using Built-in Cloud Tools
 
@@ -155,7 +158,7 @@ var agent = new LlmAgent(new LlmAgentConfig
 
 ## Source Generated Tools (Recommended)
 
-The easiest and most robust way to create tools in C# is by using the ADK's source generators. By decorating a static method with `[FunctionTool]`, the ADK automatically generates the required JSON schema, parameter parsing, and execution boilerplate.
+> **Best Practice:** The easiest and most robust way to create tools in C# is by using the ADK's source generators. By decorating a static method with `[FunctionTool]`, the ADK automatically generates the required JSON schema, parameter parsing, and execution boilerplate.
 
 ### 1. Define your tools
 

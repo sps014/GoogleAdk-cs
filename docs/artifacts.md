@@ -20,9 +20,11 @@ These APIs are implemented by `InMemoryArtifactService`, `FileArtifactService`, 
 
 The ADK includes several built-in services to handle artifact storage depending on your environment:
 
-- **`InMemoryArtifactService`**: Stores artifacts in memory. Excellent for unit testing or ephemeral CLI applications.
-- **`FileArtifactService`**: Stores artifacts on the local filesystem. Suitable for desktop applications or local development.
-- **`GcsArtifactService`**: Stores artifacts remotely in Google Cloud Storage. Supports versioning and is recommended for production cloud environments.
+| Service | Storage Location | Best For |
+| :--- | :--- | :--- |
+| **`InMemoryArtifactService`** | Memory | Unit testing or ephemeral CLI applications. |
+| **`FileArtifactService`** | Local Filesystem | Desktop applications or local development. |
+| **`GcsArtifactService`** | Google Cloud Storage | Production cloud environments (supports versioning). |
 
 ## Configuring artifacts in the runner
 
@@ -110,12 +112,14 @@ The tool returns text directly when available and provides a short descriptor fo
 
 The API server exposes REST endpoints for artifact retrieval and listing. The key routes are:
 
-- `GET /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts`
-- `GET /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions`
-- `GET /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}`
-- `GET /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}/metadata`
-- `GET /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/metadata`
-- `DELETE /apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}`
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| `GET` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts` | List all artifacts for a session. |
+| `GET` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions` | List all versions of a specific artifact. |
+| `GET` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}` | Retrieve a specific version of an artifact. |
+| `GET` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionId}/metadata` | Retrieve metadata for a specific version. |
+| `GET` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/metadata` | Retrieve metadata for all versions. |
+| `DELETE` | `/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}` | Delete an artifact and all its versions. |
 
 If a stored artifact only has text, the API wraps it into `InlineData` so the web UI can treat it like a file download.
 

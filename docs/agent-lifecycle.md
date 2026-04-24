@@ -2,11 +2,42 @@
 
 The Agent Development Kit (ADK) provides a rich set of lifecycle callbacks that allow you to execute custom logic at various stages of an agent's execution. These callbacks are essential for tasks like state management, auditing, dynamic system instructions, and emitting custom events (like A2UI components).
 
-Unlike older architectures that required complex lists of delegates, the C# ADK uses a simple **single-cast delegate** model for configuration, ensuring predictability and consistency—especially in asynchronous workflows.
+> **Note:** Unlike older architectures that required complex lists of delegates, the C# ADK uses a simple **single-cast delegate** model for configuration, ensuring predictability and consistency—especially in asynchronous workflows.
 
 ## The Execution Pipeline
 
 When a `Runner` invokes an agent, the execution follows a well-defined pipeline. If the agent is an `LlmAgent` (which represents the vast majority of agents), the pipeline extends to cover interactions with the underlying language model and any tools.
+
+```mermaid
+flowchart TD
+    Start([Agent Started]) --> BeforeAgent[BeforeAgentCallback]
+    BeforeAgent --> ModelLoop{Model Loop}
+    
+    subgraph ModelLoop [Model Loop]
+        direction TB
+        BeforeModel[BeforeModelCallback] --> LLM[LLM Execution]
+        LLM -- Success --> AfterModel[AfterModelCallback]
+        LLM -- Exception --> OnModelError[OnModelErrorCallback]
+        OnModelError --> AfterModel
+        
+        AfterModel --> ToolCheck{Tools Requested?}
+        ToolCheck -- Yes --> ToolLoop
+        ToolCheck -- No --> EndModelLoop([End Model Loop])
+        
+        subgraph ToolLoop [Tool Loop]
+            direction TB
+            BeforeTool[BeforeToolCallback] --> ExecuteTool[Tool Execution]
+            ExecuteTool -- Success --> AfterTool[AfterToolCallback]
+            ExecuteTool -- Exception --> OnToolError[OnToolErrorCallback]
+            OnToolError --> AfterTool
+        end
+        
+        AfterTool --> BeforeModel
+    end
+    
+    EndModelLoop --> AfterAgent[AfterAgentCallback]
+    AfterAgent --> Finish([Agent Completed])
+```
 
 1. **Agent Started**: The agent is initialized and the session context is loaded.
 2. **`BeforeAgentCallback`**: Executed before the agent begins its core logic.
@@ -31,35 +62,27 @@ Callbacks are configured directly on the agent's configuration object (e.g., `Ba
 
 Available on all agents deriving from `BaseAgent`:
 
-*   **`BeforeAgentCallback`**: `Func<AgentContext, Task<Content?>>`
-    *   Fires before the agent starts processing.
-    *   If you return a `Content` object, the agent will *short-circuit* and immediately return that content to the user, skipping the rest of its execution. Return `null` to continue normally.
-*   **`AfterAgentCallback`**: `Func<AgentContext, Task<Content?>>`
-    *   Fires after the agent has completed its processing.
-    *   You can use this to emit a final event (e.g., rendering an A2UI component or a summary). Return `null` if you don't want to emit an additional event.
+| Callback | Signature | Description |
+| :--- | :--- | :--- |
+| **`BeforeAgentCallback`** | `Func<AgentContext, Task<Content?>>` | Fires before the agent starts processing. Return a `Content` object to short-circuit and return immediately, or `null` to continue. |
+| **`AfterAgentCallback`** | `Func<AgentContext, Task<Content?>>` | Fires after the agent has completed processing. Use to emit a final event (e.g., UI component). Return `null` to skip emitting an extra event. |
 
 ### Model & Tool Callbacks
 
 Available exclusively on `LlmAgent`:
 
-*   **`BeforeModelCallback`**: `Func<AgentContext, LlmRequest, Task<LlmResponse?>>`
-    *   Allows you to modify the `LlmRequest` (e.g., adding global system instructions, modifying tools).
-    *   If you return an `LlmResponse`, the LLM call is bypassed and your response is used instead.
-*   **`AfterModelCallback`**: `Func<AgentContext, LlmResponse, Task<LlmResponse?>>`
-    *   Allows you to inspect or modify the `LlmResponse` before the agent processes it (e.g., logging token usage or sanitizing output).
-*   **`OnModelErrorCallback`**: `Func<AgentContext, LlmRequest, Exception, Task<LlmResponse?>>`
-    *   Fires if the LLM provider throws an exception. You can return a fallback `LlmResponse` to recover gracefully.
-*   **`BeforeToolCallback`**: `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Task<Dictionary<string, object?>?>>`
-    *   Fires before a tool executes.
-    *   If you return a dictionary, the actual tool execution is bypassed, and your dictionary is treated as the tool's result.
-*   **`AfterToolCallback`**: `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Dictionary<string, object?>, Task<Dictionary<string, object?>?>>`
-    *   Fires after a tool executes. The original result is passed in. You can modify and return a new dictionary to change the tool's output.
-*   **`OnToolErrorCallback`**: `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Exception, Task<Dictionary<string, object?>?>>`
-    *   Fires if a tool throws an exception. You can return a valid result dictionary to suppress the error and allow the agent to continue.
+| Callback | Signature | Description |
+| :--- | :--- | :--- |
+| **`BeforeModelCallback`** | `Func<AgentContext, LlmRequest, Task<LlmResponse?>>` | Modify the request (e.g., system instructions). Return an `LlmResponse` to bypass the LLM call entirely. |
+| **`AfterModelCallback`** | `Func<AgentContext, LlmResponse, Task<LlmResponse?>>` | Inspect or modify the response before processing (e.g., logging token usage). |
+| **`OnModelErrorCallback`** | `Func<AgentContext, LlmRequest, Exception, Task<LlmResponse?>>` | Fires if the LLM provider throws an exception. Return a fallback `LlmResponse` to recover gracefully. |
+| **`BeforeToolCallback`** | `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Task<Dictionary<string, object?>?>>` | Fires before a tool executes. Return a dictionary to bypass execution and mock the result. |
+| **`AfterToolCallback`** | `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Dictionary<string, object?>, Task<Dictionary<string, object?>?>>` | Fires after a tool executes. Modify and return a new dictionary to change the output. |
+| **`OnToolErrorCallback`** | `Func<IBaseTool, Dictionary<string, object?>, AgentContext, Exception, Task<Dictionary<string, object?>?>>` | Fires if a tool throws an exception. Return a valid result dictionary to suppress the error. |
 
 ## Example: Using Callbacks
 
-Here is an example demonstrating several lifecycle callbacks:
+Here is an example demonstrating several lifecycle callbacks, including recovering from an LLM provider error:
 
 ```csharp
 var agent = new LlmAgent(new LlmAgentConfig
@@ -74,6 +97,15 @@ var agent = new LlmAgent(new LlmAgentConfig
         request.Config ??= new GenerateContentConfig();
         request.Config.SystemInstruction += "\nAlways be extremely polite.";
         return Task.FromResult<LlmResponse?>(null);
+    },
+
+    // Catch and recover from LLM provider errors (e.g. rate limits)
+    OnModelErrorCallback = (ctx, request, ex) =>
+    {
+        Console.WriteLine($"LLM Error: {ex.Message}");
+        // Return a fallback response to keep the conversation flowing
+        var fallback = new LlmResponse { Text = "I'm currently experiencing high traffic. Please try again later." };
+        return Task.FromResult<LlmResponse?>(fallback);
     },
 
     // Catch and recover from tool errors

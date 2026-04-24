@@ -6,10 +6,29 @@ The ADK provides a built-in `State` system to manage conversational context, ses
 
 State is managed using keys, and the framework recognizes several prefixes to determine the scope and lifecycle of the data:
 
-*   **`user:`** - State scoped to the current user. Persists across all of the user's sessions.
-*   **`app:`** - State scoped to the application. Shared globally across all users and sessions for this app.
-*   **`temp:`** - State scoped only to the current invocation/turn. It is useful for passing temporary context between tools and callbacks, and it is cleared automatically when the current interaction ends.
-*   *(No prefix)* - Default state scoped to the current session. Persists for the lifetime of the session.
+| Prefix | Scope | Lifecycle & Persistence |
+| :--- | :--- | :--- |
+| **`user:`** | User | Persists across all of the user's sessions globally. |
+| **`app:`** | Application | Shared globally across all users and sessions for this app. |
+| **`temp:`** | Invocation | Temporary context for the current turn. Cleared automatically when the interaction ends. |
+| *(None)* | Session | Default scope. Persists for the lifetime of the current session. |
+
+```mermaid
+flowchart TD
+    subgraph App [App Scope 'app:']
+        subgraph User [User Scope 'user:']
+            subgraph Session [Session Scope 'default']
+                subgraph Invocation [Invocation Scope 'temp:']
+                    Tool[Tool Execution]
+                    Callback[Agent Callback]
+                end
+            end
+        end
+    end
+    
+    Tool -.->|Read/Write| Invocation
+    Callback -.->|Read/Write| Invocation
+```
 
 ## Using State in Callbacks and Tools
 
@@ -48,6 +67,6 @@ if (ctx.State.Has("user:name"))
 
 ## State Delta
 
-The `State` object internally maintains both the current persisted `_value` and a pending `_delta`. Whenever you modify the state during an agent invocation, the changes are recorded in the delta. At the end of the interaction, the ADK automatically merges this delta into the session and persists it using your configured `SessionService` (e.g., `InMemorySessionService`, `DatabaseSessionService`).
+> **Note:** You don't need to manually save the state; the ADK orchestrates this automatically based on the `EventActions.StateDelta` tracking.
 
-You don't need to manually save the state; the ADK orchestrates this automatically based on the `EventActions.StateDelta` tracking.
+The `State` object internally maintains both the current persisted `_value` and a pending `_delta`. Whenever you modify the state during an agent invocation, the changes are recorded in the delta. At the end of the interaction, the ADK automatically merges this delta into the session and persists it using your configured `SessionService` (e.g., `InMemorySessionService`, `DatabaseSessionService`).

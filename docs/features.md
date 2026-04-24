@@ -30,11 +30,13 @@ Instead of relying on a single monolith model, it is often more reliable to spli
 
 ### Built-in Processors
 
-- **`InstructionsLlmRequestProcessor`**: Injects system instructions, few-shot examples, and metadata into the system prompt.
-- **`CodeExecutionRequestProcessor`**: Triggers the capability for the agent to write and execute code.
-- **`RequestConfirmationLlmRequestProcessor`**: Pauses execution and surfaces a confirmation prompt when an agent attempts to execute a sensitive tool.
-- **`ContextCacheRequestProcessor`**: Automatically implements prompt caching to lower costs on repeated context blocks.
-- **`OutputSchemaRequestProcessor`**: Configures the LLM output to conform strictly to a predefined JSON schema.
+| Processor | Description |
+| :--- | :--- |
+| **`InstructionsLlmRequestProcessor`** | Injects system instructions, few-shot examples, and metadata into the system prompt. |
+| **`CodeExecutionRequestProcessor`** | Triggers the capability for the agent to write and execute code. |
+| **`RequestConfirmationLlmRequestProcessor`** | Pauses execution and surfaces a confirmation prompt when an agent attempts to execute a sensitive tool. |
+| **`ContextCacheRequestProcessor`** | Automatically implements prompt caching to lower costs on repeated context blocks. |
+| **`OutputSchemaRequestProcessor`** | Configures the LLM output to conform strictly to a predefined JSON schema. |
 
 ### Customizing the Pipeline
 
@@ -61,9 +63,11 @@ var customAgent = new LlmAgent(new LlmAgentConfig
 
 When engaging in long-running conversational flows, the context length (token count) will inevitably exceed the LLM's context window. To prevent failures and manage costs, the ADK supports **Context Compactors**, which automatically truncate or summarize conversation history.
 
-- **Truncation-based**: Removes the oldest messages in the history to keep only the `N` most recent items.
-- **Token-based**: Evaluates token limits dynamically and removes history until the payload fits.
-- **Summarization-based**: Utilizes the LLM itself to read the history, summarize it, and replace the long dialogue block with the concise summary.
+| Compactor | Strategy | Description |
+| :--- | :--- | :--- |
+| **Truncation-based** | FIFO | Removes the oldest messages in the history to keep only the `N` most recent items. |
+| **Token-based** | Limit | Evaluates token limits dynamically and removes history until the payload fits. |
+| **Summarization-based** | LLM | Utilizes the LLM itself to read the history, summarize it, and replace the long dialogue block with the concise summary. |
 
 ```csharp
 var agent = new LlmAgent(new LlmAgentConfig
