@@ -1,6 +1,6 @@
 # Agent Lifecycle & Callbacks
 
-The Agent Development Kit (ADK) provides a rich set of lifecycle callbacks that allow you to execute custom logic at various stages of an agent's execution. These callbacks are essential for tasks like state management, auditing, dynamic system instructions, and emitting custom events (like A2UI components).
+The Agent Development Kit (ADK) provides a rich set of lifecycle callbacks that allow you to execute custom logic at various stages of an agent's execution. These callbacks are essential for tasks like state management, auditing, dynamic system instructions, and emitting custom events.
 
 > **Note:** Unlike older architectures that required complex lists of delegates, the C# ADK uses a simple **single-cast delegate** model for configuration, ensuring predictability and consistency—especially in asynchronous workflows.
 
@@ -65,7 +65,7 @@ Available on all agents deriving from `BaseAgent`:
 | Callback | Signature | Description |
 | :--- | :--- | :--- |
 | **`BeforeAgentCallback`** | `Func<AgentContext, Task<Content?>>` | Fires before the agent starts processing. Return a `Content` object to short-circuit and return immediately, or `null` to continue. |
-| **`AfterAgentCallback`** | `Func<AgentContext, Task<Content?>>` | Fires after the agent has completed processing. Use to emit a final event (e.g., UI component). Return `null` to skip emitting an extra event. |
+| **`AfterAgentCallback`** | `Func<AgentContext, Task<Content?>>` | Fires after the agent has completed processing. Use to emit a final event (e.g., a summary). Return `null` to skip emitting an extra event. |
 
 ### Model & Tool Callbacks
 
@@ -117,17 +117,11 @@ var agent = new LlmAgent(new LlmAgentConfig
         return Task.FromResult<Dictionary<string, object?>?>(recoveryResult);
     },
 
-    // Emit a custom UI component when the agent finishes
-    AfterAgentCallback = async (ctx) =>
+    // Execute logic after the agent finishes
+    AfterAgentCallback = (ctx) =>
     {
-        var rootNode = new A2uiText("This conversation has ended.");
-        var part = A2uiBuilder.BeginRendering(rootNode);
-        
-        return new Content 
-        { 
-            Role = "model", 
-            Parts = new List<Part> { part } 
-        };
+        Console.WriteLine("Agent execution completed successfully.");
+        return Task.FromResult<Content?>(null);
     }
 });
 ```

@@ -46,20 +46,65 @@ var agent = new LlmAgent(new LlmAgentConfig
 
 ### Using `MeaiLlm` (any MEAI `IChatClient`)
 
-When you already have a `Microsoft.Extensions.AI` client, wrap it with `MeaiLlm` and pass it as the model:
+The true power of the ADK's model abstraction is its native support for Microsoft Extensions AI (MEAI). You can wrap **any** MEAI `IChatClient` with `MeaiLlm` and pass it as the model. This allows you to use models from OpenAI, Anthropic, Ollama, Azure, and more.
+
+#### Ollama (Local Models)
+
+To run local models like Llama 3 or Gemma using Ollama, use the `Microsoft.Extensions.AI.Ollama` package.
 
 ```csharp
 using GoogleAdk.Models.Meai;
 using Microsoft.Extensions.AI;
 
-IChatClient chatClient = /* build your MEAI client */;
-var meaiModel = new MeaiLlm("gpt-4o", chatClient);
+// Connect to your local Ollama instance
+string modelName = "gemma4:e4b";
+IChatClient ollamaClient = new OllamaChatClient(new Uri("http://localhost:11434"), modelName);
 
 var agent = new LlmAgent(new LlmAgentConfig
 {
-    Name = "meai_agent",
-    Model = meaiModel,
-    Instruction = "Respond using the MEAI client."
+    Name = "ollama_agent",
+    Model = new MeaiLlm(modelName, ollamaClient),
+    Instruction = "You are a local assistant running on Ollama."
+});
+```
+
+#### OpenAI
+
+To use OpenAI models like GPT-4o, use the `Microsoft.Extensions.AI.OpenAI` package.
+
+```csharp
+using GoogleAdk.Models.Meai;
+using Microsoft.Extensions.AI;
+using OpenAI;
+
+// Initialize the OpenAI client with your API key
+var openAiClient = new OpenAIClient("your-openai-api-key").AsChatClient("gpt-4o");
+
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "openai_agent",
+    Model = new MeaiLlm("gpt-4o", openAiClient),
+    Instruction = "You are a helpful assistant powered by OpenAI."
+});
+```
+
+#### Anthropic (Claude)
+
+To use Anthropic models like Claude 3.5 Sonnet, use a compatible MEAI wrapper or the official SDK if it implements `IChatClient`.
+
+```csharp
+using GoogleAdk.Models.Meai;
+using Microsoft.Extensions.AI;
+// Assuming a community or official MEAI wrapper for Anthropic
+using Anthropic.Extensions.AI; 
+
+var anthropicClient = new AnthropicChatClient("your-anthropic-api-key", "claude-3-5-sonnet-latest");
+
+var agent = new LlmAgent(new LlmAgentConfig
+{
+    Name = "claude_agent",
+    Model = new MeaiLlm("claude-3.5-sonnet", anthropicClient),
+    Instruction = "You are Claude, a helpful assistant."
 });
 ```
 
@@ -82,3 +127,27 @@ var rootAgent = new LlmAgent(new LlmAgentConfig
     Tools = [new AgentTool(childAgent)]
 });
 ```
+
+## Gemini-Specific Limitations
+
+While the ADK supports any model via MEAI, certain built-in tools and features are deeply integrated with Google Cloud and the Gemini API infrastructure. These features **will not work** if you use a non-Gemini provider (like OpenAI or Ollama).
+
+### Features requiring Gemini:
+- **Context Caching**: The `ContextCacheRequestProcessor` relies on the Gemini Cache API.
+- **Code Execution**: The `CodeExecutionRequestProcessor` relies on Gemini's native code execution environment.
+- **Live/Bidirectional Streaming**: `RunLiveAsync` requires the Gemini Bidi protocol.
+
+### Tools requiring Gemini or Google Cloud Auth:
+The following tools require Google Cloud authentication (ADC) or rely on Gemini-specific search grounding capabilities:
+- `GoogleSearchTool`
+- `VertexAiSearchTool`
+- `VertexAiRagRetrievalTool`
+- `DiscoveryEngineSearchTool`
+- `GoogleApiTool`
+- `ApiHubTool`
+- `BigQueryQueryTool` & `BigQueryMetadataTool`
+- `SpannerQueryTool` & `SpannerSearchTool`
+- `BigtableQueryTool`
+- `PubSubMessageTool`
+
+If you are using Ollama, OpenAI, or Anthropic, you should use standard function tools (`[FunctionTool]`), MCP toolsets, or custom `BaseTool` implementations instead.
