@@ -97,11 +97,10 @@ To use Anthropic models like Claude 3.5 Sonnet, use a compatible MEAI wrapper or
 ```csharp
 using GoogleAdk.Models.Meai;
 using Microsoft.Extensions.AI;
-// Using the official Anthropic SDK
 using Anthropic;
-using Microsoft.Extensions.AI;
+using Anthropic.Core;
 
-var anthropicClient = new AnthropicClient("your-anthropic-api-key");
+var anthropicClient = new AnthropicClient(new ClientOptions { ApiKey = "your-anthropic-api-key" });
 var chatClient = anthropicClient.AsIChatClient("claude-3-5-sonnet-latest");
 
 var agent = new LlmAgent(new LlmAgentConfig
