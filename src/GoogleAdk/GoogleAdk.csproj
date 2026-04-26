@@ -52,11 +52,12 @@
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.0" />
     <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.28" />
     <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.1" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.1" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.1" />
-    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageReference Include="Spectre.Console" Version="0.55.2" />
+    <PackageReference Include="Spectre.Console.Json" Version="0.55.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.5" />
+    <PackageReference Include="YamlDotNet" Version="17.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -76,24 +77,15 @@
 
   <!-- No ProjectReference: avoids fake NuGet dependencies on sibling projects in the nuspec. -->
   <Target Name="BuildGoogleAdkBundledProjects">
-    <MSBuild Projects="@(_GoogleAdkBundledLibProject)"
-             Targets="Build"
-             Properties="Configuration=$(Configuration);Platform=$(Platform)"
-             BuildInParallel="true" />
-    <MSBuild Projects="@(_GoogleAdkSourceGeneratorProject)"
-             Targets="Build"
-             Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netstandard2.0" />
+    <MSBuild Projects="@(_GoogleAdkBundledLibProject)" Targets="Build" Properties="Configuration=$(Configuration);Platform=$(Platform)" BuildInParallel="true" />
+    <MSBuild Projects="@(_GoogleAdkSourceGeneratorProject)" Targets="Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netstandard2.0" />
   </Target>
 
   <Target Name="GoogleAdkAddBundledContentForPackage" DependsOnTargets="Build">
-    <MSBuild Projects="@(_GoogleAdkBundledLibProject)"
-             Targets="GetTargetPath"
-             Properties="Configuration=$(Configuration);Platform=$(Platform)">
+    <MSBuild Projects="@(_GoogleAdkBundledLibProject)" Targets="GetTargetPath" Properties="Configuration=$(Configuration);Platform=$(Platform)">
       <Output TaskParameter="TargetOutputs" ItemName="_GoogleAdkBundledLibDll" />
     </MSBuild>
-    <MSBuild Projects="@(_GoogleAdkSourceGeneratorProject)"
-             Targets="GetTargetPath"
-             Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netstandard2.0">
+    <MSBuild Projects="@(_GoogleAdkSourceGeneratorProject)" Targets="GetTargetPath" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netstandard2.0">
       <Output TaskParameter="TargetOutputs" ItemName="_GoogleAdkSourceGeneratorDll" />
     </MSBuild>
     <Error Condition="'@(_GoogleAdkBundledLibDll)' == ''" Text="GoogleAdk pack: no bundled library outputs resolved." />
