@@ -82,22 +82,21 @@ For building, evaluating, and deploying agents, follow the docs and samples:
 // Load env variables like GOOGLE_API_KEY
 AdkEnv.Load();
 
-var rootAgent = new LlmAgent(new LlmAgentConfig
+var rootAgent = new LlmAgent(new()
 {
-    Name = "search_assistant",
-    Description = "An assistant that can search the web.",
+    Name = "weather_assistant",
+    Description = "An assistant that provides weather data.",
     Model = "gemini-2.5-flash",
-    Instruction = "You are a helpful assistant. Answer user questions using Google Search when needed. If User asks about weather use the GetWeather tool",
+    Instruction = "You are a helpful assistant. If the user asks about weather, use the GetWeatherData tool to provide the forecast.",
     
     // GetWeatherDataTool is generated from GetWeatherData in the format ADK expects
-    Tools = [new GoogleSearchTool(), GetWeatherDataTool]
+    Tools = [GetWeatherDataTool]
 });
 
 // Creates a webserver that can launch the ADK web UI and other endpoints 
 await AdkServer.RunAsync(rootAgent);
 
 //await ConsoleRunner.RunAsync(rootAgent); for running in console or you can easily implement your custom runner
-
 
 /// <summary>
 /// Fetches the current weather data for a given location.
