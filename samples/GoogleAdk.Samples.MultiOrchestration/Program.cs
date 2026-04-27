@@ -109,4 +109,8 @@ if (args.Contains("--web"))
 
 // ── Console mode ───────────────────────────────────────────────────────────
 
-await ConsoleRunner.RunAsync(rootAgent);
+await ConsoleRunner.RunAsync(rootAgent, config=>
+{
+    config.InitialMessage = "hi, get me news";
+    config.CloseOnFinish = true;
+});
