@@ -223,7 +223,7 @@ public static class ConsoleRunner
                             AnsiConsole.Markup("\r");
                             
                             var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
                                 .BorderColor(Color.Blue)
                                 .Expand();
                             AnsiConsole.Write(panel);
@@ -261,7 +261,7 @@ public static class ConsoleRunner
                                 AnsiConsole.Write(new string(' ', Console.WindowWidth));
                                 AnsiConsole.Markup("\r");
                                 var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
                                     .BorderColor(Color.Blue)
                                     .Expand();
                                 AnsiConsole.Write(panel);
@@ -304,7 +304,7 @@ public static class ConsoleRunner
                                 AnsiConsole.Write(new string(' ', Console.WindowWidth));
                                 AnsiConsole.Markup("\r");
                                 var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
                                     .BorderColor(Color.Blue)
                                     .Expand();
                                 AnsiConsole.Write(panel);
@@ -397,10 +397,10 @@ public static class ConsoleRunner
                         {
                             AnsiConsole.Write(new string(' ', Console.WindowWidth));
                             AnsiConsole.Markup("\r");
-                            var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                .BorderColor(Color.Blue)
-                                .Expand();
+                                var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
                             AnsiConsole.Write(flushPanel);
                             currentlyStreamingAuthor = null;
                             textBuffer.Clear();
@@ -432,10 +432,10 @@ public static class ConsoleRunner
                         {
                             AnsiConsole.Write(new string(' ', Console.WindowWidth));
                             AnsiConsole.Markup("\r");
-                            var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                .BorderColor(Color.Blue)
-                                .Expand();
+                                var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
                             AnsiConsole.Write(flushPanel);
                             currentlyStreamingAuthor = null;
                             textBuffer.Clear();
@@ -472,16 +472,16 @@ public static class ConsoleRunner
                             {
                                 if (currentlyStreamingAuthor != null)
                                 {
-                                    var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                        .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                        .BorderColor(Color.Blue)
-                                        .Expand();
+                        var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                            .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                            .BorderColor(Color.Blue)
+                            .Expand();
                                     AnsiConsole.Write(panel);
                                     textBuffer.Clear();
                                 }
                                 currentlyStreamingAuthor = evt.Author;
                                 // Print indicator once when streaming starts, not for every token
-                                AnsiConsole.Markup($"\r[blue]{Markup.Escape(currentlyStreamingAuthor)}[/] streaming... ");
+                                AnsiConsole.Markup($"\r[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/] streaming... ");
                             }
                             textBuffer.Append(textContent);
                         }
@@ -495,7 +495,7 @@ public static class ConsoleRunner
                                 AnsiConsole.Markup("\r");
                                 
                                 var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
                                     .BorderColor(Color.Blue)
                                     .Expand();
                                 AnsiConsole.Write(panel);
@@ -507,7 +507,7 @@ public static class ConsoleRunner
                             {
                                 // Did not stream, print the whole thing in a panel
                                 var panel = new Panel(MarkdownConsoleRenderer.Render(textContent))
-                                    .Header($"[blue]{Markup.Escape(evt.Author)}[/]")
+                                    .Header($"[blue]{Markup.Escape(evt.Author ?? "System")}[/]")
                                     .BorderColor(Color.Blue)
                                     .Expand();
                                 AnsiConsole.Write(panel);
@@ -526,10 +526,10 @@ public static class ConsoleRunner
                                 {
                                     AnsiConsole.Write(new string(' ', Console.WindowWidth));
                                     AnsiConsole.Markup("\r");
-                                    var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                        .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                        .BorderColor(Color.Blue)
-                                        .Expand();
+                                var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
                                     AnsiConsole.Write(flushPanel);
                                     currentlyStreamingAuthor = null;
                                     textBuffer.Clear();
@@ -545,10 +545,10 @@ public static class ConsoleRunner
                                 {
                                     AnsiConsole.Write(new string(' ', Console.WindowWidth));
                                     AnsiConsole.Markup("\r");
-                                    var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                                        .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                                        .BorderColor(Color.Blue)
-                                        .Expand();
+                                var flushPanel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                                    .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                                    .BorderColor(Color.Blue)
+                                    .Expand();
                                     AnsiConsole.Write(flushPanel);
                                     currentlyStreamingAuthor = null;
                                     textBuffer.Clear();
@@ -583,10 +583,10 @@ public static class ConsoleRunner
                     AnsiConsole.Write(new string(' ', Console.WindowWidth));
                     AnsiConsole.Markup("\r");
                             
-                    var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
-                        .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor)}[/]")
-                        .BorderColor(Color.Blue)
-                        .Expand();
+                        var panel = new Panel(MarkdownConsoleRenderer.Render(textBuffer.ToString().TrimEnd()))
+                            .Header($"[blue]{Markup.Escape(currentlyStreamingAuthor ?? "System")}[/]")
+                            .BorderColor(Color.Blue)
+                            .Expand();
                     AnsiConsole.Write(panel);
                 }
 

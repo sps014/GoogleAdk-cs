@@ -29,6 +29,8 @@ await ConsoleRunner.RunAsync(agent, config =>
     config.DebugMode = true;       // Show tool calls and subagent transfers (default: true)
     config.EnableStreaming = true; // Stream text chunk-by-chunk (default: false)
     config.AppName = "my-cli-app"; // Sets the session AppName
+    config.InitialMessage = "hi";  // Send an initial message automatically on startup
+    config.CloseOnFinish = true;   // Close the runner after the first turn completes
     
     // You can override the default in-memory services here for persistence
     // config.SessionService = new EfCoreSessionService(...);
@@ -46,6 +48,18 @@ var initialState = new Dictionary<string, object?>
 };
 
 await ConsoleRunner.RunAsync(agent, configure: null, initialState: initialState);
+```
+
+### Initial Message and Auto-Close
+
+If you want the runner to execute a single task automatically without waiting for user input, you can use `InitialMessage` and `CloseOnFinish`. This is especially useful for scripts or CI/CD environments.
+
+```csharp
+await ConsoleRunner.RunAsync(agent, config =>
+{
+    config.InitialMessage = "Summarize the latest tech news";
+    config.CloseOnFinish = true; // Exits the application after the agent finishes its response
+});
 ```
 
 ## Features
