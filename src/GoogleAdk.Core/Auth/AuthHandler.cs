@@ -76,7 +76,62 @@ public class AuthHandler
     /// </summary>
     public AuthCredential? GenerateAuthUri()
     {
-        // TODO: Implement full auth URI generation with state parameter
-        return _authConfig.RawAuthCredential;
+        if (_authConfig.RawAuthCredential?.OAuth2Auth == null)
+            return _authConfig.RawAuthCredential;
+
+        var auth2Auth = _authConfig.RawAuthCredential.OAuth2Auth;
+        var authUri = auth2Auth.AuthUri;
+
+        if (string.IsNullOrEmpty(authUri) && !string.IsNullOrEmpty(auth2Auth.ClientId))
+        {
+            var state = Guid.NewGuid().ToString("N");
+            
+            var baseAuthUri = "https://accounts.google.com/o/oauth2/v2/auth";
+            var scopes = Array.Empty<string>();
+
+            if (_authConfig.AuthScheme.Type == AuthSchemeType.OAuth2 && _authConfig.AuthScheme.Flows?.AuthorizationCode != null)
+            {
+                var authCodeFlow = _authConfig.AuthScheme.Flows.AuthorizationCode;
+                if (!string.IsNullOrEmpty(authCodeFlow.AuthorizationUrl))
+                    baseAuthUri = authCodeFlow.AuthorizationUrl;
+                
+                if (authCodeFlow.Scopes != null)
+                    scopes = authCodeFlow.Scopes.Keys.ToArray();
+            }
+            else if (_authConfig.AuthScheme.Type == AuthSchemeType.OpenIdConnect && _authConfig.AuthScheme.OpenIdConnect != null)
+            {
+                if (!string.IsNullOrEmpty(_authConfig.AuthScheme.OpenIdConnect.AuthorizationEndpoint))
+                    baseAuthUri = _authConfig.AuthScheme.OpenIdConnect.AuthorizationEndpoint;
+                
+                if (_authConfig.AuthScheme.OpenIdConnect.Scopes != null)
+                    scopes = _authConfig.AuthScheme.OpenIdConnect.Scopes.ToArray();
+            }
+
+            var queryParams = new List<string>
+            {
+                $"client_id={Uri.EscapeDataString(auth2Auth.ClientId)}",
+                $"redirect_uri={Uri.EscapeDataString(auth2Auth.RedirectUri ?? "")}",
+                $"response_type=code",
+                $"state={Uri.EscapeDataString(state)}",
+            };
+
+            if (scopes.Length > 0)
+            {
+                queryParams.Add($"scope={Uri.EscapeDataString(string.Join(" ", scopes))}");
+            }
+
+            authUri = $"{baseAuthUri}?{string.Join("&", queryParams)}";
+        }
+
+        return new AuthCredential
+        {
+            OAuth2Auth = new OAuth2Auth
+            {
+                ClientId = auth2Auth.ClientId,
+                ClientSecret = auth2Auth.ClientSecret,
+                RedirectUri = auth2Auth.RedirectUri,
+                AuthUri = authUri
+            }
+        };
     }
 }

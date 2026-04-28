@@ -11,6 +11,7 @@ namespace GoogleAdk.Core.Memory;
 public class InMemoryMemoryService : IBaseMemoryService
 {
     private readonly Dictionary<string, Dictionary<string, List<Event>>> _sessionEvents = new();
+    private readonly Dictionary<string, List<MemoryEntry>> _directMemories = new();
 
     public Task AddSessionToMemoryAsync(Session session)
     {
@@ -41,24 +42,62 @@ public class InMemoryMemoryService : IBaseMemoryService
         return Task.CompletedTask;
     }
 
+    public Task AddMemoryAsync(string appName, string userId, IEnumerable<MemoryEntry> memories, IDictionary<string, object>? customMetadata = null)
+    {
+        var userKey = $"{appName}/{userId}";
+        if (!_directMemories.ContainsKey(userKey))
+            _directMemories[userKey] = new();
+
+        _directMemories[userKey].AddRange(memories);
+        return Task.CompletedTask;
+    }
+
     public Task<SearchMemoryResponse> SearchMemoryAsync(SearchMemoryRequest request)
     {
         var userKey = $"{request.AppName}/{request.UserId}";
 
-        if (!_sessionEvents.TryGetValue(userKey, out var sessions))
-            return Task.FromResult(new SearchMemoryResponse());
+        _sessionEvents.TryGetValue(userKey, out var sessions);
 
         var queryWords = request.Query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var response = new SearchMemoryResponse();
 
-        foreach (var events in sessions.Values)
+        if (sessions != null)
         {
-            foreach (var evt in events)
+            foreach (var events in sessions.Values)
             {
-                if (evt.Content?.Parts is not { Count: > 0 }) continue;
+                foreach (var evt in events)
+                {
+                    if (evt.Content?.Parts is not { Count: > 0 }) continue;
+
+                    var joinedText = string.Join(" ",
+                        evt.Content.Parts
+                            .Where(p => !string.IsNullOrEmpty(p.Text))
+                            .Select(p => p.Text!));
+
+                    var words = ExtractWordsLower(joinedText);
+                    if (words.Count == 0) continue;
+
+                    if (queryWords.Any(qw => words.Contains(qw)))
+                    {
+                        response.Memories.Add(new MemoryEntry
+                        {
+                            Content = evt.Content,
+                            Author = evt.Author,
+                            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(evt.Timestamp).ToString("o")
+                        });
+                    }
+                }
+            }
+        }
+
+        if (_directMemories.TryGetValue(userKey, out var directMemories))
+        {
+            foreach (var mem in directMemories)
+            {
+                if (mem.Content?.Parts is not { Count: > 0 }) continue;
 
                 var joinedText = string.Join(" ",
-                    evt.Content.Parts
+                    mem.Content.Parts
                         .Where(p => !string.IsNullOrEmpty(p.Text))
                         .Select(p => p.Text!));
 
@@ -67,12 +106,7 @@ public class InMemoryMemoryService : IBaseMemoryService
 
                 if (queryWords.Any(qw => words.Contains(qw)))
                 {
-                    response.Memories.Add(new MemoryEntry
-                    {
-                        Content = evt.Content,
-                        Author = evt.Author,
-                        Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(evt.Timestamp).ToString("o")
-                    });
+                    response.Memories.Add(mem);
                 }
             }
         }
