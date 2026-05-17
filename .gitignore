@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 
 # MkDocs build directory
 site/
+
+adk-python/
+A2UI/
