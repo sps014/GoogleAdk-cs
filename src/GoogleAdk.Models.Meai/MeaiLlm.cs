@@ -137,29 +137,41 @@ public class MeaiLlm : BaseLlm
                 }
             }
 
-            // Build the final aggregated response.
-            // Thought parts are intentionally excluded — they were already emitted
-            // as partial events and are accumulated in ADK Web / ConsoleRunner from
-            // those partials. Including them here would cause a duplicate Thinking panel.
-            var finalParts = new List<Part>();
-            if (textBuffer.Length > 0)
-                finalParts.Add(new Part { Text = textBuffer });
-            finalParts.AddRange(fcParts);
+                // Build the final aggregated response.
+                // Thought parts are intentionally excluded — they were already emitted
+                // as partial events and are accumulated in ADK Web / ConsoleRunner from
+                // those partials. Including them here would cause a duplicate Thinking panel.
+                var finalParts = new List<Part>();
+                if (textBuffer.Length > 0)
+                    finalParts.Add(new Part { Text = textBuffer });
+                finalParts.AddRange(fcParts);
 
-            if (finalParts.Count > 0 || lastRaw != null)
-            {
-                yield return new LlmResponse
+                if (finalParts.Count > 0 || lastRaw != null)
                 {
-                    Content = new Content
+                    var finalResp = new LlmResponse
                     {
-                        Role = "model",
-                        Parts = finalParts.Count > 0 ? finalParts : new List<Part>()
-                    },
-                    Partial = false,
-                    TurnComplete = true,
-                    RawRepresentation = lastRaw,
-                };
-            }
+                        Content = new Content
+                        {
+                            Role = "model",
+                            Parts = finalParts.Count > 0 ? finalParts : new List<Part>()
+                        },
+                        Partial = false,
+                        TurnComplete = true,
+                        RawRepresentation = lastRaw,
+                    };
+                    
+                    if (lastRaw is Microsoft.Extensions.AI.ChatResponse finalRaw && finalRaw.Usage != null)
+                    {
+                        finalResp.UsageMetadata = new UsageMetadata
+                        {
+                            PromptTokenCount = (int)(finalRaw.Usage.InputTokenCount ?? 0),
+                            CandidatesTokenCount = (int)(finalRaw.Usage.OutputTokenCount ?? 0),
+                            TotalTokenCount = (int)(finalRaw.Usage.TotalTokenCount ?? 0),
+                        };
+                    }
+                    
+                    yield return finalResp;
+                }
         }
         else
         {

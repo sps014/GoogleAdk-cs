@@ -261,25 +261,44 @@ public static class AdkApiEndpoints
             }, s_jsonOptions);
         });
 
-        // ── Agent Graph ────────────────────────────────────────────────────
+        // ── Dev UI ─────────────────────────────────────────────────────────
+        app.MapGet("/dev/{appName}/graph", (string appName, AgentLoader loader, [FromQuery(Name = "dark_mode")] bool darkMode = false) =>
+        {
+            var agent = loader.GetAgent(appName);
+            var graph = AgentGraphBuilder.BuildGraph(agent, null, darkMode);
+            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+        });
+
         app.MapGet("/apps/{appName}/agent-graph", (string appName, AgentLoader loader) =>
         {
             var agent = loader.GetAgent(appName);
-            var graph = AgentGraphBuilder.BuildGraph(agent);
-            return Results.Json(graph, s_jsonOptions);
+            var graph = AgentGraphBuilder.BuildGraph(agent, null, false);
+            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
         });
 
         app.MapGet("/dev/build_graph/{appName}", (string appName, AgentLoader loader) =>
         {
             var agent = loader.GetAgent(appName);
-            var graph = AgentGraphBuilder.BuildGraph(agent);
-            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+            var rootAgentNode = AgentGraphBuilder.BuildGraph(agent);
+            return Results.Json(new { name = appName, root_agent = rootAgentNode }, s_jsonOptions);
         });
 
-        app.MapGet("/dev/build_graph_image/{appName}", (string appName) =>
+        app.MapGet("/dev/build_graph_image/{appName}", (string appName, AgentLoader loader, [FromQuery(Name = "dark_mode")] bool darkMode = false, [FromQuery(Name = "node")] string? node = null) =>
         {
-            // Just return a 204 No Content for now to prevent 404s in the UI
-            return Results.NoContent();
+            var agent = loader.GetAgent(appName);
+            var graph = AgentGraphBuilder.BuildGraph(agent, null, darkMode);
+
+            if (!string.IsNullOrEmpty(node))
+            {
+                return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+            }
+
+            // Return a dictionary where the key is the app name so the UI's Object.entries() loop works
+            var responseDict = new Dictionary<string, object>
+            {
+                { appName, new { dotSrc = graph } }
+            };
+            return Results.Json(responseDict, s_jsonOptions);
         });
 
         // ── Debug Trace (per event) ────────────────────────────────────────
@@ -300,7 +319,7 @@ public static class AdkApiEndpoints
         // ── Event Graph (per event with highlights) ────────────────────────
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/events/{eventId}/graph",
             async (string appName, string userId, string sessionId, string eventId,
-                   RunnerManager mgr, AgentLoader loader) =>
+                   RunnerManager mgr, AgentLoader loader, [FromQuery(Name = "dark_mode")] bool darkMode = false) =>
             {
                 var session = await mgr.SessionService.GetSessionAsync(new GetSessionRequest
                 {
@@ -335,7 +354,7 @@ public static class AdkApiEndpoints
                 if (highlights.Count == 0 && evt.Author != null)
                     highlights.Add((evt.Author, ""));
 
-                var graph = AgentGraphBuilder.BuildGraph(agent, highlights);
+                var graph = AgentGraphBuilder.BuildGraph(agent, highlights, darkMode);
                 return Results.Json(new { dotSrc = graph }, s_jsonOptions);
             });
 

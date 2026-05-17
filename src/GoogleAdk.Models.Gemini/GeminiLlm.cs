@@ -329,7 +329,10 @@ public class GeminiLlm : MeaiLlm
                 };
 
                 if (lastRaw is GenerateContentResponse finalRaw)
+                {
                     ApplyGroundingMetadata(finalResp, finalRaw);
+                    ApplyUsageMetadata(finalResp, finalRaw);
+                }
 
                 if (llmRequest.CacheMetadata != null)
                     finalResp.CacheMetadata = llmRequest.CacheMetadata.Clone();
@@ -390,6 +393,19 @@ public class GeminiLlm : MeaiLlm
                 GroundingChunkIndices = s.GroundingChunkIndices?.ToList()
             }).ToList()
         };
+    }
+
+    private static void ApplyUsageMetadata(LlmResponse resp, GenerateContentResponse raw)
+    {
+        if (raw.UsageMetadata != null)
+        {
+            resp.UsageMetadata = new GoogleAdk.Core.Abstractions.Models.UsageMetadata
+            {
+                PromptTokenCount = raw.UsageMetadata.PromptTokenCount,
+                CandidatesTokenCount = raw.UsageMetadata.CandidatesTokenCount,
+                TotalTokenCount = raw.UsageMetadata.TotalTokenCount,
+            };
+        }
     }
 
     /// <summary>

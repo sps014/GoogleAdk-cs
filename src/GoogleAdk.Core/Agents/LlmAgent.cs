@@ -521,13 +521,16 @@ public class LlmAgent : BaseAgent
                 yield return evt;
 
                 // Regenerate the event ID and timestamp after every yielded event
-                // to avoid ID conflicts. Matches Python: model_response_event.id = Event.new_id()
-                modelResponseEvent = Event.Create(e =>
+                // to avoid ID conflicts, EXCEPT for partial streaming events.
+                if (evt.Partial != true)
                 {
-                    e.InvocationId = invocationContext.InvocationId;
-                    e.Author = Name;
-                    e.Branch = invocationContext.Branch;
-                });
+                    modelResponseEvent = Event.Create(e =>
+                    {
+                        e.InvocationId = invocationContext.InvocationId;
+                        e.Author = Name;
+                        e.Branch = invocationContext.Branch;
+                    });
+                }
             }
         }
     }
