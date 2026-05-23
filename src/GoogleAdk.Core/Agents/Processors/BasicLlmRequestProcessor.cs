@@ -43,5 +43,19 @@ public class BasicLlmRequestProcessor : BaseLlmRequestProcessor
 
         if (agent.OutputSchema != null)
             llmRequest.SetOutputSchema(SchemaHelper.TypeToSchemaDict(agent.OutputSchema));
+
+        // Apply RunConfig overrides
+        if (invocationContext.RunConfig != null)
+        {
+            if (invocationContext.RunConfig.ResponseModalities != null)
+            {
+                llmRequest.Config.ResponseModalities = invocationContext.RunConfig.ResponseModalities;
+            }
+
+            if (invocationContext.RunConfig.SpeechConfig != null)
+            {
+                llmRequest.Config.SpeechConfig = invocationContext.RunConfig.SpeechConfig;
+            }
+        }
     }
 }
