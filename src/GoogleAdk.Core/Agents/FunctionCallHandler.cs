@@ -71,27 +71,76 @@ public static class FunctionCallHandler
     {
         var functionCalls = functionCallEvent.GetFunctionCalls();
         var responseEvents = new List<Event>();
+        
+        var maxWorkers = invocationContext.RunConfig?.ToolThreadPoolConfig?.MaxWorkers ?? 4;
+        using var semaphore = new SemaphoreSlim(maxWorkers);
 
-        foreach (var functionCall in functionCalls)
+        var tasks = functionCalls.Select(functionCall => ProcessFunctionCallAsync(
+            functionCall,
+            invocationContext,
+            toolsDict,
+            beforeToolCallback,
+            onToolErrorCallback,
+            afterToolCallback,
+            toolConfirmations,
+            filterFunctionCallIds,
+            semaphore));
+
+        var results = await Task.WhenAll(tasks);
+        
+        foreach (var result in results)
         {
-            if (filterFunctionCallIds != null && functionCall.Id != null && !filterFunctionCallIds.Contains(functionCall.Id))
-                continue;
-
-            if (functionCall.Name == null || !toolsDict.TryGetValue(functionCall.Name, out var toolRef))
+            if (result != null)
             {
-                responseEvents.Add(BuildErrorResponseEvent(
-                    invocationContext, functionCall,
-                    $"Function {functionCall.Name} is not found in the toolsDict."));
-                continue;
+                responseEvents.Add(result);
             }
+        }
 
-            if (toolRef is not BaseTool tool)
-            {
-                responseEvents.Add(BuildErrorResponseEvent(
-                    invocationContext, functionCall, "Tool does not support execution."));
-                continue;
-            }
+        if (responseEvents.Count == 0)
+            return null;
 
+        var mergedEvent = MergeParallelFunctionResponseEvents(responseEvents);
+
+        // Trace merged tool calls if there were multiple
+        if (responseEvents.Count > 1)
+        {
+            using var mergedSpan = Telemetry.AdkTracing.StartSpan("execute_tool (merged)");
+            Telemetry.AdkTracing.TraceMergedToolCalls(mergedEvent.Id, mergedEvent);
+        }
+
+        return mergedEvent;
+    }
+
+    private static async Task<Event?> ProcessFunctionCallAsync(
+        FunctionCall functionCall,
+        InvocationContext invocationContext,
+        Dictionary<string, IBaseTool> toolsDict,
+        BeforeToolCallback? beforeToolCallback,
+        OnToolErrorCallback? onToolErrorCallback,
+        AfterToolCallback? afterToolCallback,
+        Dictionary<string, Abstractions.Tools.ToolConfirmation>? toolConfirmations,
+        HashSet<string>? filterFunctionCallIds,
+        SemaphoreSlim semaphore)
+    {
+        if (filterFunctionCallIds != null && functionCall.Id != null && !filterFunctionCallIds.Contains(functionCall.Id))
+            return null;
+
+        if (functionCall.Name == null || !toolsDict.TryGetValue(functionCall.Name, out var toolRef))
+        {
+            return BuildErrorResponseEvent(
+                invocationContext, functionCall,
+                $"Function {functionCall.Name} is not found in the toolsDict.");
+        }
+
+        if (toolRef is not BaseTool tool)
+        {
+            return BuildErrorResponseEvent(
+                invocationContext, functionCall, "Tool does not support execution.");
+        }
+
+        await semaphore.WaitAsync();
+        try
+        {
             var args = functionCall.Args ?? new Dictionary<string, object?>();
             var toolContext = new AgentContext(invocationContext, functionCallId: functionCall.Id);
             if (toolConfirmations != null && functionCall.Id != null &&
@@ -164,7 +213,7 @@ public static class FunctionCallHandler
 
             // Allow long-running tools to return null
             if (tool.IsLongRunning && functionResponse == null)
-                continue;
+                return null;
 
             if (errorMessage != null)
                 functionResponse = new Dictionary<string, object?> { ["error"] = errorMessage };
@@ -183,22 +232,12 @@ public static class FunctionCallHandler
             Telemetry.AdkTracing.TraceToolCall(tool, args, responseEvent);
             toolSpan?.Dispose();
 
-            responseEvents.Add(responseEvent);
+            return responseEvent;
         }
-
-        if (responseEvents.Count == 0)
-            return null;
-
-        var mergedEvent = MergeParallelFunctionResponseEvents(responseEvents);
-
-        // Trace merged tool calls if there were multiple
-        if (responseEvents.Count > 1)
+        finally
         {
-            using var mergedSpan = Telemetry.AdkTracing.StartSpan("execute_tool (merged)");
-            Telemetry.AdkTracing.TraceMergedToolCalls(mergedEvent.Id, mergedEvent);
+            semaphore.Release();
         }
-
-        return mergedEvent;
     }
 
     /// <summary>

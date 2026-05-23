@@ -83,7 +83,6 @@ public class RunConfig
     public bool SaveLiveBlob { get; set; }
 
     /// <summary>Configuration for running tools in a thread pool for live mode.</summary>
-    [Obsolete("Not yet supported in C# ADK")]
     public ToolThreadPoolConfig? ToolThreadPoolConfig { get; set; }
 
     /// <summary>Custom metadata for the current invocation.</summary>
