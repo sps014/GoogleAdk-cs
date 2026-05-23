@@ -39,45 +39,58 @@ public class RunConfig
     public bool SaveInputBlobsAsArtifacts { get; set; }
 
     /// <summary>Speech configuration for the live agent.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public SpeechConfig? SpeechConfig { get; set; }
 
     /// <summary>The output modalities. If not set, defaults to AUDIO in live contexts.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public List<Modality>? ResponseModalities { get; set; }
 
     /// <summary>Whether to support CFC (Compositional Function Calling).</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public bool SupportCfc { get; set; }
 
     /// <summary>Output transcription for live agents with audio response.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public AudioTranscriptionConfig? OutputAudioTranscription { get; set; }
 
     /// <summary>Input transcription for live agents with audio input from user.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public AudioTranscriptionConfig? InputAudioTranscription { get; set; }
 
     /// <summary>Realtime input config for live agents with audio input from user.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public RealtimeInputConfig? RealtimeInputConfig { get; set; }
 
     /// <summary>If enabled, the model will detect emotions and adapt its responses accordingly.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public bool? EnableAffectiveDialog { get; set; }
 
     /// <summary>Configures the proactivity of the model.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public ProactivityConfig? Proactivity { get; set; }
 
     /// <summary>Configures session resumption mechanism.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public SessionResumptionConfig? SessionResumption { get; set; }
 
     /// <summary>Configuration for context window compression.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public ContextWindowCompressionConfig? ContextWindowCompression { get; set; }
 
     /// <summary>Saves live video and audio data to session and artifact service.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public bool SaveLiveBlob { get; set; }
 
     /// <summary>Configuration for running tools in a thread pool for live mode.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public ToolThreadPoolConfig? ToolThreadPoolConfig { get; set; }
 
     /// <summary>Custom metadata for the current invocation.</summary>
     public Dictionary<string, object?>? CustomMetadata { get; set; }
 
     /// <summary>Configuration for controlling which events are fetched when loading a session.</summary>
+    [Obsolete("Not yet supported in C# ADK")]
     public GetSessionConfig? GetSessionConfig { get; set; }
 }
 

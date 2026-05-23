@@ -20,7 +20,11 @@ public static class AdkServiceCollectionExtensions
         // Add AdkServerOptions to DI for later use in middleware/endpoints
         services.AddSingleton(options);
 
-        var agentLoader = new AgentLoader(".");
+        // We build an intermediate provider to get the logger for AgentLoader.
+        var sp = services.BuildServiceProvider();
+        var agentLoaderLogger = sp.GetService<Microsoft.Extensions.Logging.ILogger<AgentLoader>>();
+        
+        var agentLoader = new AgentLoader(options.AgentsDirectory, agentLoaderLogger);
         agentLoader.Register(rootAgent.Name, rootAgent);
 
         var sessionService = new InMemorySessionService();

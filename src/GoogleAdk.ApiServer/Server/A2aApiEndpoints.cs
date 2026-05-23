@@ -12,13 +12,6 @@ namespace GoogleAdk.ApiServer;
 
 public static class A2aApiEndpoints
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = false,
-    };
-
     public static WebApplication MapA2aApi(this WebApplication app)
     {
         app.MapGet("/a2a/{appName}/" + AgentCardConstants.AgentCardPath,
@@ -32,7 +25,7 @@ public static class A2aApiEndpoints
                     new AgentInterface { Url = $"{baseUrl}/rest", Transport = "HTTP+JSON" },
                 };
                 var card = await AgentCardBuilder.GetA2AAgentCardAsync(agent, transports);
-                return Results.Json(card, s_jsonOptions);
+                return Results.Json(card, AdkJsonOptions.Default);
             })
             .Produces<AgentCard>()
             .WithTags("A2A");
@@ -58,9 +51,9 @@ public static class A2aApiEndpoints
                     {
                         JsonRpc = "2.0",
                         Id = request.Id,
-                        Result = JsonSerializer.SerializeToElement(evt, evt.GetType(), s_jsonOptions),
+                        Result = JsonSerializer.SerializeToElement(evt, evt.GetType(), AdkJsonOptions.Default),
                     };
-                    var json = JsonSerializer.Serialize(rpc, s_jsonOptions);
+                    var json = JsonSerializer.Serialize(rpc, AdkJsonOptions.Default);
                     await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
                     await http.Response.Body.FlushAsync(http.RequestAborted);
                 }
@@ -68,7 +61,7 @@ public static class A2aApiEndpoints
             }
 
             var single = await ExecuteA2aSingleAsync(appName, request, loader, manager, http.RequestAborted);
-            return Results.Json(single, s_jsonOptions);
+            return Results.Json(single, AdkJsonOptions.Default);
         })
         .Produces<JsonRpcResponse>()
         .WithTags("A2A");
@@ -81,7 +74,7 @@ public static class A2aApiEndpoints
             RunnerManager manager) =>
         {
             var result = await ExecuteA2aSingleAsync(appName, request, loader, manager, http.RequestAborted);
-            return Results.Json(result, s_jsonOptions);
+            return Results.Json(result, AdkJsonOptions.Default);
         })
         .Produces<RestSendResponse>()
         .WithTags("A2A");
@@ -101,7 +94,7 @@ public static class A2aApiEndpoints
 
             await foreach (var evt in ExecuteA2aAsync(appName, request, loader, manager, http.RequestAborted))
             {
-                var json = JsonSerializer.Serialize(evt, evt.GetType(), s_jsonOptions);
+                var json = JsonSerializer.Serialize(evt, evt.GetType(), AdkJsonOptions.Default);
                 await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
                 await http.Response.Body.FlushAsync(http.RequestAborted);
             }
@@ -123,7 +116,7 @@ public static class A2aApiEndpoints
         if (request.Params is null)
             yield break;
         var parameters = JsonSerializer.Deserialize<MessageSendParams>(
-            JsonSerializer.Serialize(request.Params, s_jsonOptions), s_jsonOptions);
+            JsonSerializer.Serialize(request.Params, AdkJsonOptions.Default), AdkJsonOptions.Default);
         if (parameters == null) yield break;
 
         await foreach (var evt in ExecuteA2aAsync(appName, parameters, loader, manager, cancellationToken))
@@ -163,12 +156,12 @@ public static class A2aApiEndpoints
             return new JsonRpcResponse { JsonRpc = "2.0", Id = request.Id, Error = new JsonRpcError { Code = -32602, Message = "Invalid params" } };
 
         var parameters = JsonSerializer.Deserialize<MessageSendParams>(
-            JsonSerializer.Serialize(request.Params, s_jsonOptions), s_jsonOptions);
+            JsonSerializer.Serialize(request.Params, AdkJsonOptions.Default), AdkJsonOptions.Default);
         if (parameters == null)
             return new JsonRpcResponse { JsonRpc = "2.0", Id = request.Id, Error = new JsonRpcError { Code = -32602, Message = "Invalid params" } };
 
         var task = await ExecuteA2aTaskAsync(appName, parameters, loader, manager, cancellationToken);
-        var payloadElement = JsonSerializer.SerializeToElement(task, s_jsonOptions);
+        var payloadElement = JsonSerializer.SerializeToElement(task, AdkJsonOptions.Default);
         return new JsonRpcResponse { JsonRpc = "2.0", Id = request.Id, Result = payloadElement };
     }
 

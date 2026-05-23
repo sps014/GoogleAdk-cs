@@ -17,8 +17,10 @@ public sealed class InMemoryTraceCollector : IDisposable
     /// <summary>sessionId → list of trace IDs</summary>
     private readonly ConcurrentDictionary<string, ConcurrentBag<string>> _sessionTraceIds = new();
 
+    private const int MaxSpans = 10000;
+
     /// <summary>All finished spans (for session trace lookup)</summary>
-    private readonly ConcurrentBag<SpanRecord> _allSpans = new();
+    private readonly ConcurrentQueue<SpanRecord> _allSpans = new();
 
     public InMemoryTraceCollector()
     {
@@ -69,7 +71,7 @@ public sealed class InMemoryTraceCollector : IDisposable
         }
 
         // Store all spans for session trace lookup
-        _allSpans.Add(new SpanRecord
+        _allSpans.Enqueue(new SpanRecord
         {
             Name = opName,
             SpanId = activity.SpanId.ToString(),
@@ -79,6 +81,17 @@ public sealed class InMemoryTraceCollector : IDisposable
             ParentSpanId = activity.ParentSpanId == default ? null : activity.ParentSpanId.ToString(),
             Attributes = activity.Tags.ToDictionary(t => t.Key, t => (object?)t.Value),
         });
+
+        while (_allSpans.Count > MaxSpans)
+        {
+            _allSpans.TryDequeue(out _);
+        }
+
+        if (_traceByEvent.Count > MaxSpans)
+        {
+            _traceByEvent.Clear();
+            _sessionTraceIds.Clear();
+        }
     }
 
     /// <summary>Get flat attributes dict for a specific event ID (matches JS traceDict[eventId]).</summary>

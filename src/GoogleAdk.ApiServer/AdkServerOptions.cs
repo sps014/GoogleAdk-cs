@@ -69,4 +69,19 @@ public class AdkServerOptions
     /// Optional action to configure the application pipeline.
     /// </summary>
     public Action<IApplicationBuilder>? ConfigureApp { get; set; }
+
+    /// <summary>
+    /// A limit on the total number of LLM calls for a given run. Defaults to 500.
+    /// </summary>
+    public int MaxLlmCalls { get; set; } = 500;
+
+    /// <summary>
+    /// The directory to load agents from. Defaults to ".".
+    /// </summary>
+    public string AgentsDirectory { get; set; } = ".";
+
+    /// <summary>
+    /// WebSocket buffer size for /run_live. Defaults to 8192.
+    /// </summary>
+    public int WebSocketBufferSize { get; set; } = 8192;
 }

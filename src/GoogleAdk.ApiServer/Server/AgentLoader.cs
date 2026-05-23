@@ -1,5 +1,7 @@
 using GoogleAdk.Core.Agents;
 
+using Microsoft.Extensions.Logging;
+
 namespace GoogleAdk.ApiServer;
 
 /// <summary>
@@ -19,10 +21,13 @@ public class AgentLoader
 {
     private readonly string _agentsDir;
     private readonly Dictionary<string, AgentEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ILogger<AgentLoader>? _logger;
+    private bool _hasScanned;
 
-    public AgentLoader(string agentsDir)
+    public AgentLoader(string agentsDir, ILogger<AgentLoader>? logger = null)
     {
         _agentsDir = Path.GetFullPath(agentsDir);
+        _logger = logger;
     }
 
     /// <summary>Lists all discovered agent names.</summary>
@@ -55,7 +60,9 @@ public class AgentLoader
 
     private void EnsureLoaded()
     {
-        if (_cache.Count > 0) return;
+        if (_hasScanned || _cache.Count > 0) return;
+        _hasScanned = true;
+        
         if (!Directory.Exists(_agentsDir)) return;
 
         // Scan for .dll files
@@ -88,7 +95,14 @@ public class AgentLoader
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[AgentLoader] Failed to load '{name}' from {path}: {ex.Message}");
+                if (_logger != null)
+                {
+                    _logger.LogError(ex, "[AgentLoader] Failed to load '{Name}' from {Path}: {Message}", name, path, ex.Message);
+                }
+                else
+                {
+                    Console.Error.WriteLine($"[AgentLoader] Failed to load '{name}' from {path}: {ex.Message}");
+                }
             }
         }
     }

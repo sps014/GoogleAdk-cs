@@ -5,6 +5,8 @@ using GoogleAdk.Core.Agents;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GoogleAdk.ApiServer;
 
@@ -13,19 +15,12 @@ namespace GoogleAdk.ApiServer;
 /// </summary>
 public static class AdkApiEndpoints
 {
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = false,
-    };
-
     public static WebApplication MapAdkApi(this WebApplication app)
     {
         // ── List Apps ──────────────────────────────────────────────────────
         app.MapGet("/list-apps", (AgentLoader loader) =>
         {
-            return Results.Json(loader.ListAgents(), s_jsonOptions);
+            return Results.Json(loader.ListAgents(), AdkJsonOptions.Default);
         });
 
         // ── Session CRUD ───────────────────────────────────────────────────
@@ -37,7 +32,7 @@ public static class AdkApiEndpoints
                     AppName = appName,
                     UserId = userId,
                 });
-                return Results.Json(result.Sessions, s_jsonOptions);
+                return Results.Json(result.Sessions, AdkJsonOptions.Default);
             });
 
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}",
@@ -49,7 +44,7 @@ public static class AdkApiEndpoints
                     UserId = userId,
                     SessionId = sessionId,
                 });
-                return session is null ? Results.NotFound() : Results.Json(session, s_jsonOptions);
+                return session is null ? Results.NotFound() : Results.Json(session, AdkJsonOptions.Default);
             });
 
         app.MapPost("/apps/{appName}/users/{userId}/sessions",
@@ -61,7 +56,7 @@ public static class AdkApiEndpoints
                     UserId = userId,
                     State = body?.State ?? (mgr.InitialState != null ? new Dictionary<string, object?>(mgr.InitialState) : null),
                 });
-                return Results.Json(session, s_jsonOptions, statusCode: 201);
+                return Results.Json(session, AdkJsonOptions.Default, statusCode: 201);
             });
 
         app.MapPost("/apps/{appName}/users/{userId}/sessions/{sessionId}",
@@ -75,7 +70,7 @@ public static class AdkApiEndpoints
                     SessionId = sessionId,
                     State = body?.State ?? (mgr.InitialState != null ? new Dictionary<string, object?>(mgr.InitialState) : null),
                 });
-                return Results.Json(session, s_jsonOptions, statusCode: 201);
+                return Results.Json(session, AdkJsonOptions.Default, statusCode: 201);
             });
 
         app.MapDelete("/apps/{appName}/users/{userId}/sessions/{sessionId}",
@@ -91,7 +86,7 @@ public static class AdkApiEndpoints
             });
 
         // ── Run (synchronous) ──────────────────────────────────────────────
-        app.MapPost("/run", async (HttpContext http, [FromBody] RunAgentRequest req, RunnerManager mgr) =>
+        app.MapPost("/run", async (HttpContext http, [FromBody] RunAgentRequest req, RunnerManager mgr, AdkServerOptions options) =>
         {
             try
             {
@@ -101,6 +96,8 @@ public static class AdkApiEndpoints
 
                 var runConfig = req.RunConfig ?? new GoogleAdk.Core.Agents.RunConfig();
                 runConfig.SaveInputBlobsAsArtifacts = req.RunConfig?.SaveInputBlobsAsArtifacts ?? true;
+                if (req.RunConfig == null || req.RunConfig.MaxLlmCalls == 500) // Default in RunConfig is 500
+                    runConfig.MaxLlmCalls = options.MaxLlmCalls;
 
                 await foreach (var evt in runner.RunAsync(
                     req.UserId, req.SessionId, message,
@@ -111,17 +108,18 @@ public static class AdkApiEndpoints
                     events.Add(evt);
                 }
 
-                return Results.Json(events, s_jsonOptions);
+                return Results.Json(events, AdkJsonOptions.Default);
             }
             catch (Exception ex)
             {
-                return Results.Json(new { error = $"Failed to run agent: {ex.Message}" },
-                    statusCode: 500, options: s_jsonOptions);
+                http.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("AdkApiEndpoints")?.LogError(ex, "Failed to run agent.");
+                return Results.Json(new ApiErrorResponse($"Failed to run agent: {ex.Message}"),
+                    statusCode: 500, options: AdkJsonOptions.Default);
             }
         });
 
         // ── Run SSE (streaming) ────────────────────────────────────────────
-        app.MapPost("/run_sse", async (HttpContext http, [FromBody] RunAgentRequest req, RunnerManager mgr) =>
+        app.MapPost("/run_sse", async (HttpContext http, [FromBody] RunAgentRequest req, RunnerManager mgr, AdkServerOptions options) =>
         {
             bool headersSent = false;
             try
@@ -139,6 +137,8 @@ public static class AdkApiEndpoints
                 var runConfig = req.RunConfig ?? new GoogleAdk.Core.Agents.RunConfig();
                 // Dev Server UI relies on parsing inline data attachments into artifacts.
                 runConfig.SaveInputBlobsAsArtifacts = req.RunConfig?.SaveInputBlobsAsArtifacts ?? true;
+                if (req.RunConfig == null || req.RunConfig.MaxLlmCalls == 500)
+                    runConfig.MaxLlmCalls = options.MaxLlmCalls;
                 runConfig.StreamingMode = req.Streaming
                         ? GoogleAdk.Core.Agents.StreamingMode.Sse
                         : GoogleAdk.Core.Agents.StreamingMode.None;
@@ -150,7 +150,7 @@ public static class AdkApiEndpoints
                     cancellationToken: http.RequestAborted))
                 {
                     // ADK Web UI handles rendering artifacts correctly.
-                    var json = JsonSerializer.Serialize(evt, s_jsonOptions);
+                    var json = JsonSerializer.Serialize(evt, AdkJsonOptions.Default);
                     await http.Response.WriteAsync($"data: {json}\n\n", http.RequestAborted);
                     await http.Response.Body.FlushAsync(http.RequestAborted);
                 }
@@ -158,10 +158,11 @@ public static class AdkApiEndpoints
             catch (OperationCanceledException) { /* client disconnected */ }
             catch (Exception ex)
             {
+                http.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("AdkApiEndpoints")?.LogError(ex, "Failed to run agent (SSE).");
                 if (headersSent)
                 {
                     // Headers already sent — write error as SSE event, then end
-                    var errorJson = JsonSerializer.Serialize(new { error = ex.Message }, s_jsonOptions);
+                    var errorJson = JsonSerializer.Serialize(new ApiErrorResponse(ex.Message), AdkJsonOptions.Default);
                     await http.Response.WriteAsync($"data: {errorJson}\n\n", http.RequestAborted);
                 }
                 else
@@ -169,24 +170,24 @@ public static class AdkApiEndpoints
                     http.Response.StatusCode = 500;
                     http.Response.ContentType = "application/json";
                     var errorJson = JsonSerializer.Serialize(
-                        new { error = $"Failed to run agent: {ex.Message}" }, s_jsonOptions);
+                        new ApiErrorResponse($"Failed to run agent: {ex.Message}"), AdkJsonOptions.Default);
                     await http.Response.WriteAsync(errorJson, http.RequestAborted);
                 }
             }
         });
 
         // ── Run Live (WebSocket) ───────────────────────────────────────────
-        app.Map("/run_live", async (HttpContext http, RunnerManager mgr) =>
+        app.Map("/run_live", async (HttpContext http, RunnerManager mgr, AdkServerOptions options) =>
         {
             if (!http.WebSockets.IsWebSocketRequest)
                 return Results.BadRequest("WebSocket required.");
 
             using var socket = await http.WebSockets.AcceptWebSocketAsync();
-            var initPayload = await ReceiveJsonAsync(socket, http.RequestAborted);
+            var initPayload = await ReceiveJsonAsync(socket, http.RequestAborted, options.WebSocketBufferSize);
             if (string.IsNullOrWhiteSpace(initPayload))
                 return Results.BadRequest("Missing init payload.");
 
-            var initReq = JsonSerializer.Deserialize<RunLiveRequest>(initPayload, s_jsonOptions);
+            var initReq = JsonSerializer.Deserialize<RunLiveRequest>(initPayload, AdkJsonOptions.Default);
             if (initReq == null || string.IsNullOrWhiteSpace(initReq.AppName))
                 return Results.BadRequest("Invalid init payload.");
 
@@ -197,18 +198,32 @@ public static class AdkApiEndpoints
             {
                 StreamingMode = GoogleAdk.Core.Agents.StreamingMode.Bidi
             };
+            if (initReq.RunConfig == null || initReq.RunConfig.MaxLlmCalls == 500)
+                runConfig.MaxLlmCalls = options.MaxLlmCalls;
 
             var sendTask = Task.Run(async () =>
             {
-                await foreach (var evt in runner.RunLiveAsync(
-                    initReq.UserId, initReq.SessionId, liveQueue,
-                    initialMessage: initReq.InitialMessage,
-                    stateDelta: initReq.StateDelta,
-                    runConfig: runConfig,
-                    cancellationToken: http.RequestAborted))
+                try
                 {
-                    var json = JsonSerializer.Serialize(evt, s_jsonOptions);
-                    await SendJsonAsync(socket, json, http.RequestAborted);
+                    await foreach (var evt in runner.RunLiveAsync(
+                        initReq.UserId, initReq.SessionId, liveQueue,
+                        initialMessage: initReq.InitialMessage,
+                        stateDelta: initReq.StateDelta,
+                        runConfig: runConfig,
+                        cancellationToken: http.RequestAborted))
+                    {
+                        var json = JsonSerializer.Serialize(evt, AdkJsonOptions.Default);
+                        await SendJsonAsync(socket, json, http.RequestAborted);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    http.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("AdkApiEndpoints")?.LogError(ex, "Error in /run_live sendTask.");
+                    if (socket.State == WebSocketState.Open)
+                    {
+                        var errorJson = JsonSerializer.Serialize(new ApiErrorResponse(ex.Message), AdkJsonOptions.Default);
+                        await SendJsonAsync(socket, errorJson, CancellationToken.None);
+                    }
                 }
             }, http.RequestAborted);
 
@@ -216,10 +231,10 @@ public static class AdkApiEndpoints
             {
                 while (socket.State == WebSocketState.Open && !http.RequestAborted.IsCancellationRequested)
                 {
-                    var payload = await ReceiveJsonAsync(socket, http.RequestAborted);
+                    var payload = await ReceiveJsonAsync(socket, http.RequestAborted, options.WebSocketBufferSize);
                     if (payload == null) break;
 
-                    var msg = JsonSerializer.Deserialize<LiveRequestMessage>(payload, s_jsonOptions);
+                    var msg = JsonSerializer.Deserialize<LiveRequestMessage>(payload, AdkJsonOptions.Default);
                     if (msg == null) continue;
 
                     if (msg.Close)
@@ -235,6 +250,15 @@ public static class AdkApiEndpoints
                 }
             }
             catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                http.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("AdkApiEndpoints")?.LogError(ex, "Error in /run_live receive loop.");
+                if (socket.State == WebSocketState.Open)
+                {
+                    var errorJson = JsonSerializer.Serialize(new ApiErrorResponse(ex.Message), AdkJsonOptions.Default);
+                    await SendJsonAsync(socket, errorJson, CancellationToken.None);
+                }
+            }
             finally
             {
                 liveQueue.Close();
@@ -258,7 +282,7 @@ public static class AdkApiEndpoints
                 version = "0.1.0",
                 language = "csharp",
                 language_version = Environment.Version.ToString()
-            }, s_jsonOptions);
+            }, AdkJsonOptions.Default);
         });
 
         // ── Dev UI ─────────────────────────────────────────────────────────
@@ -266,21 +290,21 @@ public static class AdkApiEndpoints
         {
             var agent = loader.GetAgent(appName);
             var graph = AgentGraphBuilder.BuildGraph(agent, null, darkMode);
-            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+            return Results.Json(new { dotSrc = graph }, AdkJsonOptions.Default);
         });
 
         app.MapGet("/apps/{appName}/agent-graph", (string appName, AgentLoader loader) =>
         {
             var agent = loader.GetAgent(appName);
             var graph = AgentGraphBuilder.BuildGraph(agent, null, false);
-            return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+            return Results.Json(new { dotSrc = graph }, AdkJsonOptions.Default);
         });
 
         app.MapGet("/dev/build_graph/{appName}", (string appName, AgentLoader loader) =>
         {
             var agent = loader.GetAgent(appName);
             var rootAgentNode = AgentGraphBuilder.BuildGraph(agent);
-            return Results.Json(new { name = appName, root_agent = rootAgentNode }, s_jsonOptions);
+            return Results.Json(new { name = appName, root_agent = rootAgentNode }, AdkJsonOptions.Default);
         });
 
         app.MapGet("/dev/build_graph_image/{appName}", (string appName, AgentLoader loader, [FromQuery(Name = "dark_mode")] bool darkMode = false, [FromQuery(Name = "node")] string? node = null) =>
@@ -290,7 +314,7 @@ public static class AdkApiEndpoints
 
             if (!string.IsNullOrEmpty(node))
             {
-                return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+                return Results.Json(new { dotSrc = graph }, AdkJsonOptions.Default);
             }
 
             // Return a dictionary where the key is the app name so the UI's Object.entries() loop works
@@ -298,7 +322,7 @@ public static class AdkApiEndpoints
             {
                 { appName, new { dotSrc = graph } }
             };
-            return Results.Json(responseDict, s_jsonOptions);
+            return Results.Json(responseDict, AdkJsonOptions.Default);
         });
 
         // ── Debug Trace (per event) ────────────────────────────────────────
@@ -306,14 +330,14 @@ public static class AdkApiEndpoints
         {
             var trace = traces.GetTraceByEventId(eventId);
             if (trace == null) return Results.NotFound("Trace not found");
-            return Results.Json(trace, s_jsonOptions);
+            return Results.Json(trace, AdkJsonOptions.Default);
         });
 
         // ── Debug Trace (per session) ──────────────────────────────────────
         app.MapGet("/debug/trace/session/{sessionId}", (string sessionId, InMemoryTraceCollector traces) =>
         {
             var spans = traces.GetSpansBySessionId(sessionId);
-            return Results.Json(spans, s_jsonOptions);
+            return Results.Json(spans, AdkJsonOptions.Default);
         });
 
         // ── Event Graph (per event with highlights) ────────────────────────
@@ -329,11 +353,11 @@ public static class AdkApiEndpoints
                 });
 
                 if (session is null)
-                    return Results.NotFound(new { error = $"Session not found: {sessionId}" });
+                    return Results.NotFound(new ApiErrorResponse($"Session not found: {sessionId}"));
 
                 var evt = session.Events?.FirstOrDefault(e => e.Id == eventId);
                 if (evt is null)
-                    return Results.NotFound(new { error = $"Event not found: {eventId}" });
+                    return Results.NotFound(new ApiErrorResponse($"Event not found: {eventId}"));
 
                 var agent = loader.GetAgent(appName);
 
@@ -355,12 +379,12 @@ public static class AdkApiEndpoints
                     highlights.Add((evt.Author, ""));
 
                 var graph = AgentGraphBuilder.BuildGraph(agent, highlights, darkMode);
-                return Results.Json(new { dotSrc = graph }, s_jsonOptions);
+                return Results.Json(new { dotSrc = graph }, AdkJsonOptions.Default);
             });
 
         // ── Eval Sets (stubs – matching JS ADK 501 behavior) ──────────────
         app.MapGet("/apps/{appName}/eval_sets",
-            (string appName) => Results.Json(Array.Empty<object>(), s_jsonOptions));
+            (string appName) => Results.Json(Array.Empty<object>(), AdkJsonOptions.Default));
 
         app.MapPost("/apps/{appName}/eval_sets/{evalSetId}",
             (string appName, string evalSetId) => Results.StatusCode(501));
@@ -385,7 +409,7 @@ public static class AdkApiEndpoints
 
         // ── Eval Results (stubs) ───────────────────────────────────────────
         app.MapGet("/apps/{appName}/eval_results",
-            (string appName) => Results.Json(Array.Empty<object>(), s_jsonOptions));
+            (string appName) => Results.Json(Array.Empty<object>(), AdkJsonOptions.Default));
 
         app.MapGet("/apps/{appName}/eval_results/{evalResultId}",
             (string appName, string evalResultId) => Results.StatusCode(501));
@@ -431,7 +455,7 @@ public static class AdkApiEndpoints
                     };
                 }
 
-                return Results.Json(part, s_jsonOptions);
+                return Results.Json(part, AdkJsonOptions.Default);
             });
 
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/{versionIdStr}/metadata",
@@ -455,7 +479,7 @@ public static class AdkApiEndpoints
                 });
 
                 if (metadata == null) return Results.NotFound();
-                return Results.Json(metadata, s_jsonOptions);
+                return Results.Json(metadata, AdkJsonOptions.Default);
             });
 
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions/metadata",
@@ -473,7 +497,7 @@ public static class AdkApiEndpoints
                 });
 
                 if (metadata == null) return Results.NotFound();
-                return Results.Json(metadata, s_jsonOptions);
+                return Results.Json(metadata, AdkJsonOptions.Default);
             });
 
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}/versions",
@@ -489,7 +513,7 @@ public static class AdkApiEndpoints
                     Filename = artifactName
                 });
 
-                return Results.Json(versions, s_jsonOptions);
+                return Results.Json(versions, AdkJsonOptions.Default);
             });
 
         app.MapGet("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts",
@@ -504,7 +528,7 @@ public static class AdkApiEndpoints
                     SessionId = sessionId
                 });
 
-                return Results.Json(filenames, s_jsonOptions);
+                return Results.Json(filenames, AdkJsonOptions.Default);
             });
 
         app.MapPost("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts",
@@ -531,7 +555,7 @@ public static class AdkApiEndpoints
                     Version = version
                 });
 
-                return Results.Json(metadata, s_jsonOptions);
+                return Results.Json(metadata, AdkJsonOptions.Default);
             });
 
         app.MapDelete("/apps/{appName}/users/{userId}/sessions/{sessionId}/artifacts/{artifactName}",
@@ -553,9 +577,9 @@ public static class AdkApiEndpoints
         return app;
     }
 
-    private static async Task<string?> ReceiveJsonAsync(WebSocket socket, CancellationToken cancellationToken)
+    private static async Task<string?> ReceiveJsonAsync(WebSocket socket, CancellationToken cancellationToken, int bufferSize = 8192)
     {
-        var buffer = new ArraySegment<byte>(new byte[8192]);
+        var buffer = new ArraySegment<byte>(new byte[bufferSize]);
         using var ms = new MemoryStream();
 
         while (true)

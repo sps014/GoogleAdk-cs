@@ -50,8 +50,22 @@ public static class InstructionInjector
             var fileName = key["artifact.".Length..];
             var artifactService = context.InvocationContext.ArtifactService
                 ?? throw new InvalidOperationException("Artifact service is not initialized.");
-            // For now, return the filename placeholder - full artifact loading depends on service implementation
-            return $"[artifact:{fileName}]";
+
+            var session = context.InvocationContext.Session;
+            var request = new GoogleAdk.Core.Abstractions.Artifacts.LoadArtifactRequest
+            {
+                AppName = session.AppName,
+                UserId = session.UserId,
+                SessionId = session.Id,
+                Filename = fileName
+            };
+
+            var part = await artifactService.LoadArtifactAsync(request);
+            if (part != null && part.Text != null)
+            {
+                return part.Text;
+            }
+            return string.Empty;
         }
 
         // Handle state variable injection

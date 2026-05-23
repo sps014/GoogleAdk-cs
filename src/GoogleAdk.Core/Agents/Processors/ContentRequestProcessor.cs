@@ -79,11 +79,11 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
         }
 
         // Build contents, rearranging function responses as needed
-        var contents = new List<Content>();
+        var contents = new List<Content>(filteredEvents.Count);
         foreach (var evt in filteredEvents)
         {
             if (evt.Content != null)
-                contents.Add(CloneContent(evt.Content));
+                contents.Add(evt.Content);
         }
         return contents;
     }
@@ -180,21 +180,6 @@ public class ContentRequestProcessor : BaseLlmRequestProcessor
                 Parts = textParts
             };
         });
-    }
-
-    private static Content CloneContent(Content original)
-    {
-        return new Content
-        {
-            Role = original.Role,
-            Parts = original.Parts?.Select(p => new Part
-            {
-                Text = p.Text,
-                FunctionCall = p.FunctionCall,
-                FunctionResponse = p.FunctionResponse,
-                InlineData = p.InlineData,
-            }).ToList()
-        };
     }
 }
 

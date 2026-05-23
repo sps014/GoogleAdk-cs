@@ -4,6 +4,7 @@ using GoogleAdk.Core.Runner;
 using GoogleAdk.Core.Abstractions.Sessions;
 using GoogleAdk.Core.Abstractions.Artifacts;
 using GoogleAdk.Core.Abstractions.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace GoogleAdk.ApiServer;
 
@@ -18,14 +19,22 @@ public class RunnerManager
     private readonly IBaseArtifactService? _artifactService;
     private readonly IBaseMemoryService? _memoryService;
     private readonly Dictionary<string, object?>? _initialState;
+    private readonly ILogger<RunnerManager>? _logger;
 
-    public RunnerManager(AgentLoader agentLoader, BaseSessionService sessionService, IBaseArtifactService? artifactService = null, IBaseMemoryService? memoryService = null, Dictionary<string, object?>? initialState = null)
+    public RunnerManager(
+        AgentLoader agentLoader, 
+        BaseSessionService sessionService, 
+        IBaseArtifactService? artifactService = null, 
+        IBaseMemoryService? memoryService = null, 
+        Dictionary<string, object?>? initialState = null,
+        ILogger<RunnerManager>? logger = null)
     {
         _agentLoader = agentLoader;
         _sessionService = sessionService;
         _artifactService = artifactService;
         _memoryService = memoryService;
         _initialState = initialState;
+        _logger = logger;
     }
 
     public Runner GetOrCreate(string appName)

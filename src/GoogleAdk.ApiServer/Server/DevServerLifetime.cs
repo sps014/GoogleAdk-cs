@@ -17,9 +17,10 @@ internal static class DevServerLifetime
             {
                 app.Lifetime.StopApplication();
             }
-            catch
+            catch (Exception ex)
             {
                 // Best-effort shutdown only.
+                Console.Error.WriteLine($"[DevServerLifetime] Error during shutdown: {ex.Message}");
             }
         }
 

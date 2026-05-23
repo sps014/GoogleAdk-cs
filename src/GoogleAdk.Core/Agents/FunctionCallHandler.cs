@@ -133,8 +133,6 @@ public static class FunctionCallHandler
                     {
                         functionResponse = await invocationContext.PluginManager
                             .RunOnToolErrorCallbackAsync(tool, args, toolContext, ex);
-                        if (functionResponse != null)
-                            continue;
                     }
 
                     if (onToolErrorCallback != null)

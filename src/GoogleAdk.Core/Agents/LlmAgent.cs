@@ -685,47 +685,54 @@ public class LlmAgent : BaseAgent
 
         var stream = invocationContext.RunConfig?.StreamingMode == StreamingMode.Sse;
         using var llmSpan = Telemetry.AdkTracing.StartSpan("call_llm");
-        var channel = System.Threading.Channels.Channel.CreateUnbounded<LlmResponse>();
+        
+        LlmResponse? recovery = null;
         Exception? error = null;
-        var recovered = false;
 
-        var writerTask = Task.Run(async () =>
+        var enumerator = llm.GenerateContentAsync(llmRequest, stream).WithCancellation(cancellationToken).GetAsyncEnumerator();
+        try
         {
-            try
+            while (true)
             {
-                await foreach (var llmResponse in llm.GenerateContentAsync(llmRequest, stream).WithCancellation(cancellationToken))
+                LlmResponse llmResponse;
+                LlmResponse? altered = null;
+
+                try
                 {
+                    if (!await enumerator.MoveNextAsync())
+                        break;
+
+                    llmResponse = enumerator.Current;
                     Telemetry.AdkTracing.TraceCallLlm(invocationContext, modelResponseEvent.Id, llmRequest, llmResponse);
-                    var altered = await HandleAfterModelCallbackAsync(invocationContext, llmResponse, callbackContext);
-                    await channel.Writer.WriteAsync(altered ?? llmResponse, cancellationToken);
+                    altered = await HandleAfterModelCallbackAsync(invocationContext, llmResponse, callbackContext);
                 }
-            }
-            catch (Exception ex)
-            {
-                var recovery = await HandleOnModelErrorCallbackAsync(invocationContext, llmRequest, callbackContext, ex);
-                if (recovery != null)
+                catch (Exception ex)
                 {
-                    recovered = true;
-                    await channel.Writer.WriteAsync(recovery, cancellationToken);
+                    recovery = await HandleOnModelErrorCallbackAsync(invocationContext, llmRequest, callbackContext, ex);
+                    if (recovery == null)
+                    {
+                        error = ex;
+                    }
+                    break;
                 }
-                else
-                {
-                    error = ex;
-                }
+
+                yield return altered ?? llmResponse;
             }
-            finally
-            {
-                channel.Writer.TryComplete();
-            }
-        }, cancellationToken);
+        }
+        finally
+        {
+            await enumerator.DisposeAsync();
+        }
 
-        await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
-            yield return item;
+        if (recovery != null)
+        {
+            yield return recovery;
+        }
 
-        await writerTask;
-
-        if (error != null && !recovered)
+        if (error != null)
+        {
             throw error;
+        }
     }
 
     private async Task<LlmResponse?> HandleBeforeModelCallbackAsync(
@@ -806,9 +813,10 @@ public class LlmAgent : BaseAgent
                 result = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(resultStr)
                     ?? (object)resultStr;
             }
-            catch
+            catch (Exception ex)
             {
                 // Keep as string if JSON parse fails
+                System.Diagnostics.Trace.TraceWarning($"Failed to parse JSON output: {ex.Message}");
             }
         }
 
