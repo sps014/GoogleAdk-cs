@@ -431,9 +431,10 @@ public class GeminiLlm : MeaiLlm
         resp.Content.Parts = [.. thoughtParts, .. nonThought];
     }
 
-    public override Task<BaseLlmConnection> ConnectAsync(LlmRequest llmRequest)
+    public override async Task<BaseLlmConnection> ConnectAsync(LlmRequest llmRequest)
     {
-        BaseLlmConnection connection = new GeminiLiveConnection(this, llmRequest);
-        return Task.FromResult(connection);
+        var connection = new GeminiLiveConnection(this, llmRequest);
+        await connection.ConnectAsync();
+        return connection;
     }
 }

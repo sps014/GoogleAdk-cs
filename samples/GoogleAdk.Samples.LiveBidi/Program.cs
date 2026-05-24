@@ -13,7 +13,7 @@ Console.WriteLine("=== Live/Bidi Sample ===\n");
 
 AdkEnv.Load();
 
-var model = "gemini-2.5-flash";
+var model = "gemini-live-2.5-flash-native-audio";
 var agent = new LlmAgent(new LlmAgentConfig
 {
     Name = "live",
@@ -41,7 +41,14 @@ var runTask = Task.Run(async () =>
             {
                 Console.Write(text);
             }
-            else if (evt.IsFinalResponse() && !string.IsNullOrWhiteSpace(text))
+            
+            var inlineData = evt.Content?.Parts?.FirstOrDefault()?.InlineData;
+            if (inlineData != null)
+            {
+                Console.Write($"[Audio chunk received: {inlineData.Data.Length} chars] ");
+            }
+
+            if (evt.IsFinalResponse() && !string.IsNullOrWhiteSpace(text))
             {
                 Console.WriteLine();
             }
